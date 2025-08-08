@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,34 +15,77 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const user = this.usersRepository.create({
-      ...registerDto,
-      password: hashedPassword,
+    const existingUser = await this.usersRepository.findOne({ 
+      where: { email: registerDto.email } 
     });
+    
+    if (existingUser) {
+      throw new ConflictException('Пользователь с таким email уже существует');
+    }
+
+    const user = this.usersRepository.create(registerDto);
     await this.usersRepository.save(user);
     return this.generateToken(user);
   }
 
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersRepository.findOne({ where: { email } });
-    if (user && await bcrypt.compare(pass, user.password)) {
-      const { password, ...result } = user;
-      return result;
-    }
-    return null;
+
+  async validateUser(email: string, password: string): Promise<any> {
+    const user = await this.usersRepository.findOne({ 
+      where: { email },
+      select: ['id', 'email', 'password', 'name'] // Важно!
+    });
+    
+    if (!user) return null;
+
+    // console.log('Input password:', password);
+    // console.log('Stored hash:', user.password);
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return null;
+
+    const { password: _, ...result } = user;
+    return result;
   }
 
   async validateUserById(userId: number) {
     return this.usersRepository.findOne({ where: { id: userId } });
   }
 
-  async login(user: any) {
+  async login(user: User) {
     return this.generateToken(user);
   }
 
-  private generateToken(user: any) {
-    const payload = { email: user.email, sub: user.id };
+  async validateOrCreateUser(profile: {
+      email: string;
+      name: string;
+      provider: string;
+    }) {
+    let user = await this.usersRepository.findOne({ 
+      where: { email: profile.email } 
+    });
+
+    if (!user) {
+      user = this.usersRepository.create({
+        email: profile.email,
+        name: profile.name,
+        isVerified: true,
+        provider: profile.provider,
+      });
+      await this.usersRepository.save(user);
+    }
+
+    return this.generateToken(user);
+  }
+
+  private generateToken(user: User) {
+    if (!user || !user.email) {
+      throw new Error('Invalid user object');
+    }
+    const payload = { 
+      sub: user.id, 
+      email: user.email,
+      name: user.name 
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };

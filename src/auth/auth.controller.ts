@@ -1,9 +1,9 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { LocalAuthGuard } from './strategies/local.strategy';
+import { LocalAuthGuard } from './guards/local-auth.guard';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -16,13 +16,27 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req, @Body() loginDto: LoginDto) {
+  @HttpCode(HttpStatus.OK) // Явно указываем статус 200
+  async login(@Request() req) {
     return this.authService.login(req.user);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('test-protected')
+  @Get('test-protected')
   async testProtected(@Request() req) {
     return req.user;
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // Инициирует аутентификацию через Google
+  }
+  
+  @Get('google/redirect')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    const token = await this.authService.login(req.user);
+    res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
   }
 }
