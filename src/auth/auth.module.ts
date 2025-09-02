@@ -10,20 +10,31 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { PassportModule } from '@nestjs/passport';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    PassportModule.register({ defaultStrategy: 'local' }),
+    ConfigModule,
+    PassportModule,
     TypeOrmModule.forFeature([User]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secretKey',
-      signOptions: { expiresIn: '1h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.getOrThrow('JWT_SECRET'),
+        signOptions: { expiresIn: '1h' },
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, JwtAuthGuard, {
+  providers: [
+    AuthService, 
+    LocalStrategy, 
+    JwtStrategy, 
+    JwtAuthGuard,
+    LocalAuthGuard,
+    GoogleStrategy,
+    {
       provide: 'GOOGLE_STRATEGY_CONFIG',
       useFactory: (configService: ConfigService) => ({
         clientID: configService.getOrThrow('GOOGLE_CLIENT_ID'),
@@ -31,8 +42,8 @@ import { ConfigService } from '@nestjs/config';
         callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
       }),
       inject: [ConfigService],
-    },
-    GoogleStrategy, LocalAuthGuard],
+    }
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

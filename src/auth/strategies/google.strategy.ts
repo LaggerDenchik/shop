@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, StrategyOptions } from 'passport-google-oauth20';
+import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { AuthService } from '../auth.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -15,20 +15,24 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.getOrThrow('GOOGLE_CLIENT_SECRET'),
       callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
       scope: ['email', 'profile'],
-      passReqToCallback: false, // Явно указываем этот параметр
-    } satisfies StrategyOptions); // Используем satisfies для проверки типа
+      passReqToCallback: false,
+    });
   }
 
   async validate(
     accessToken: string,
     refreshToken: string,
-    profile: any
+    profile: any,
+    done: VerifyCallback
   ): Promise<any> {
     const { emails, displayName } = profile;
-    return {
+    
+    const user = await this.authService.validateOrCreateUser({
       email: emails[0].value,
       name: displayName,
       provider: 'google',
-    };
+    });
+
+    done(null, user);
   }
 }

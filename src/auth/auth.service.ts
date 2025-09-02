@@ -56,10 +56,10 @@ export class AuthService {
   }
 
   async validateOrCreateUser(profile: {
-      email: string;
-      name: string;
-      provider: string;
-    }) {
+  email: string;
+  name: string;
+  provider: string;
+  }) {
     let user = await this.usersRepository.findOne({ 
       where: { email: profile.email } 
     });
@@ -70,11 +70,12 @@ export class AuthService {
         name: profile.name,
         isVerified: true,
         provider: profile.provider,
+        password: await bcrypt.hash(Math.random().toString(36), 10), 
       });
       await this.usersRepository.save(user);
     }
 
-    return this.generateToken(user);
+    return user; 
   }
 
   private generateToken(user: User) {
