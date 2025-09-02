@@ -15,14 +15,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
+        type: 'mysql', // Меняем на mysql
         host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get('DB_USERNAME', 'postgres'),
-        password: configService.get('DB_PASSWORD', ''),
-        database: configService.get('DB_NAME', 'postgres'),
+        port: configService.get<number>('DB_PORT', 3306), 
+        username: configService.get('DB_USERNAME'),
+        password: configService.get('DB_PASSWORD'),
+        database: configService.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
+        // Дополнительные настройки для MySQL
+        charset: 'utf8mb4',
+        timezone: '+00:00',
+        connectTimeout: 60000,
+        acquireTimeout: 60000,
+        timeout: 60000,
       }),
       inject: [ConfigService],
     }),
