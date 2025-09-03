@@ -3,34 +3,23 @@ import { AuthModule } from './auth/auth.module';
 import { CabinetsModule } from './cabinets/cabinets.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: 's-monte.env',
-      isGlobal: true,
     }),
     PassportModule,
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql', // mysql
-        host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432), 
-        username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_NAME'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-        // Дополнительные настройки для MySQL
-        charset: 'utf8mb4',
-        timezone: '+00:00',
-        connectTimeout: 60000,
-        acquireTimeout: 60000,
-        timeout: 60000,
-      }),
-      inject: [ConfigService],
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      socketPath: '/tmp/mysql.sock',
+      username: 'fasadmg_sp1',
+      password: 'SqjVB,#$C[WR@UyA',
+      database: 'fasadmg_sp',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+      charset: 'utf8mb4',
     }),
     AuthModule,
     CabinetsModule
