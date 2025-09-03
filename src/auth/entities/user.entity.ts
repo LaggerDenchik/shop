@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, Unique } from 'ty
 import * as bcrypt from 'bcrypt';
 
 @Entity()
-@Unique(['email']) // уникальный индекс
+// @Unique(['email']) // уникальный индекс
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
