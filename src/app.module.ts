@@ -4,6 +4,7 @@ import { CabinetsModule } from './cabinets/cabinets.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 //import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CatalogModule } from 'catalog/catalog.module';
 
 // @Module({
 //   imports: [
@@ -55,7 +56,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
     }),
     AuthModule,
-    CabinetsModule
+    CabinetsModule,
+    CatalogModule
   ],
 })
 export class AppModule {}
