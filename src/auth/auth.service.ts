@@ -58,7 +58,7 @@ export class AuthService {
   async validateOrCreateUser(profile: {
   email: string;
   name: string;
-  provider: string;
+  provider: string,
   }) {
     let user = await this.usersRepository.findOne({ 
       where: { email: profile.email } 
@@ -69,7 +69,7 @@ export class AuthService {
         email: profile.email,
         name: profile.name,
         isVerified: true,
-        provider: profile.provider,
+        provider: profile.provider || 'google',
         password: await bcrypt.hash(Math.random().toString(36), 10), 
       });
       await this.usersRepository.save(user);
