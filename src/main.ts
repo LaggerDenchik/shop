@@ -8,8 +8,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: [
-      'https://shop.montegroup.by',
-      'http://shop.montegroup.by'
+      'http://194.62.19.106:3000'
     ],
     credentials: true
   });

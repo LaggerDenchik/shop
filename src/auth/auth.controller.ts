@@ -37,6 +37,6 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res) {
     const token = await this.authService.login(req.user);
-    res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
+    res.redirect(`http://194.62.19.106:3000/login-success?token=${token.access_token}`);
   }
 }
