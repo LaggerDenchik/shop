@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
+// import { AuthModule } from './auth/auth.module';
 import { CabinetsModule } from './cabinets/cabinets.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 //import { PassportModule } from '@nestjs/passport';
@@ -55,7 +55,7 @@ import { CatalogModule } from 'catalog/catalog.module';
       }),
       inject: [ConfigService],
     }),
-    AuthModule,
+    //AuthModule,
     CabinetsModule,
     CatalogModule
   ],

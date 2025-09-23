@@ -5,8 +5,11 @@ import { CatalogService } from './catalog.service';
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
+
   @Get()
-  getFrameData(@Query('query') query: string){
+  getData(@Query('query') query: string){
     return this.catalogService.getData(query);
   }
+
+  
 }
