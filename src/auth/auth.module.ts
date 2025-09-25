@@ -33,16 +33,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     JwtStrategy, 
     JwtAuthGuard,
     LocalAuthGuard,
-    GoogleStrategy,
-    {
-      provide: 'GOOGLE_STRATEGY_CONFIG',
-      useFactory: (configService: ConfigService) => ({
-        clientID: configService.getOrThrow('GOOGLE_CLIENT_ID'),
-        clientSecret: configService.getOrThrow('GOOGLE_CLIENT_SECRET'),
-        callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
-      }),
-      inject: [ConfigService],
-    }
+    // GoogleStrategy,
+    // {
+    //   provide: 'GOOGLE_STRATEGY_CONFIG',
+    //   useFactory: (configService: ConfigService) => ({
+    //     clientID: configService.getOrThrow('GOOGLE_CLIENT_ID'),
+    //     clientSecret: configService.getOrThrow('GOOGLE_CLIENT_SECRET'),
+    //     callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
+    //   }),
+    //   inject: [ConfigService],
+    // }
   ],
   exports: [AuthService],
 })
