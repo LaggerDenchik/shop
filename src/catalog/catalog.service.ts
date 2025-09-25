@@ -78,10 +78,12 @@ export class CatalogService {
 
   async getData(query): Promise<any> {
     const token = await this.getToken();
-
+    console.log(`${this.API_HOST}/api/catalog/${query}`);
     try {
       if (this.API_TOKEN == '') this.getToken();
-      const url = `${this.API_HOST}/api/catalog/product/query?${query}`;
+      const url = `${this.API_HOST}/api/catalog/${query}`;
+      // const url = `${this.API_HOST}/api/catalog/product/query?${query}`;
+      //console.log(`${this.API_HOST}/api/catalog/${query}`);
 
       // Используем POST
       const response = await firstValueFrom(
@@ -95,6 +97,42 @@ export class CatalogService {
             responseType: 'text',
           },
         ),
+      );
+
+      let data;
+      try {
+        data = JSON.parse(response.data);
+      } catch {
+        console.warn('Ответ не является JSON, возвращаем как текст');
+        data = response.data;
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error('Ошибка API:', error.response?.data || error.message);
+      throw new Error(
+        `Ошибка при вызове API: ${error.response?.data || error.message}`,
+      );
+    }
+  }
+
+  async getDataLookup(query): Promise<any> {
+    const token = await this.getToken();
+
+    try {
+      if (this.API_TOKEN == '') this.getToken();
+      const url = `${this.API_HOST}/api/catalog/${query}`;
+      // const url = `${this.API_HOST}/api/catalog/product/query?${query}`;
+      // console.log(`${this.API_HOST}/api/catalog/${query}`);
+
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            Authorization: `Bearer ${this.API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'text',
+        }),
       );
 
       let data;
