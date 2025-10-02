@@ -8,11 +8,19 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  async findUserById(id: number) {
+    return this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'email', 'name', 'phone', 'createdAt']
+    });
+  }
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
   ) {}
+
+  
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersRepository.findOne({ 
@@ -25,26 +33,32 @@ export class AuthService {
 
     const user = this.usersRepository.create(registerDto);
     await this.usersRepository.save(user);
-    return this.generateToken(user);
+    
+    // Получим сохраненного пользователя с полными данными
+    const savedUser = await this.usersRepository.findOne({
+      where: { id: user.id },
+      select: ['id', 'email', 'name', 'phone', 'createdAt']
+    });
+
+    if (!savedUser) {
+      throw new Error('User not found after registration');
+    }
+
+    return this.generateToken(savedUser);
   }
 
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersRepository.findOne({ 
       where: { email },
-      select: ['id', 'email', 'password', 'name'] // Важно!
+      select: ['id', 'email', 'password', 'name', 'phone', 'createdAt'] // Важно!
     });
     
-    if (!user) return null;
-
-    // console.log('Input password:', password);
-    // console.log('Stored hash:', user.password);
-    
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return null;
-
-    const { password: _, ...result } = user;
-    return result;
+    if (user && await bcrypt.compare(password, user.password)) {
+      const { password, ...result } = user;
+      return result;
+    }
+    return null;
   }
 
   async validateUserById(userId: number) {
@@ -56,9 +70,9 @@ export class AuthService {
   }
 
   async validateOrCreateUser(profile: {
-  email: string;
-  name: string;
-  provider: string,
+    email: string;
+    name: string;
+    provider: string,
   }) {
     let user = await this.usersRepository.findOne({ 
       where: { email: profile.email } 
@@ -75,20 +89,43 @@ export class AuthService {
       await this.usersRepository.save(user);
     }
 
-    return user; 
+    const fullUser = await this.usersRepository.findOne({
+      where: { id: user.id },
+      select: ['id', 'email', 'name', 'phone', 'createdAt']
+    });
+
+    return fullUser;
   }
 
-  private generateToken(user: User) {
+  private async generateToken(user: User) {
     if (!user || !user.email) {
       throw new Error('Invalid user object');
     }
+
+    const fullUser = await this.usersRepository.findOne({
+      where: { id: user.id },
+      select: ['id', 'email', 'name', 'phone', 'createdAt']
+    });
+
+    if (!fullUser) {
+      throw new Error('User not found');
+    }
+
     const payload = { 
       sub: user.id, 
       email: user.email,
       name: user.name 
     };
+
     return {
       access_token: this.jwtService.sign(payload),
+      user: {
+        id: fullUser.id,
+        email: fullUser.email,
+        name: fullUser.name,
+        phone: fullUser.phone,
+        registrationDate: fullUser.createdAt
+      }
     };
   }
 }

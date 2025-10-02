@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 //import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CatalogModule } from 'catalog/catalog.module';
+import { SettingsModule } from './settings/settings.module';
 
 // @Module({
 //   imports: [
@@ -57,7 +58,8 @@ import { CatalogModule } from 'catalog/catalog.module';
     }),
     AuthModule,
     CabinetsModule,
-    CatalogModule
+    CatalogModule,
+    SettingsModule
   ],
 })
 export class AppModule {}

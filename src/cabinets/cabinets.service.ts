@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,15 +11,26 @@ export class CabinetsService {
   ) {}
 
   
-  async findUserById(id: number) {
-    return this.usersRepository.findOne({
-      where: { id }, 
-      select: ['id', 'email', 'name'],
-    });
-  }
+   async findUserById(id: number) {
+      // const user = await this.usersRepository.findOne({
+      //   where: { id }, 
+      //   select: ['id', 'email', 'name'], 
+      // });
 
-  async findAll() {
-    return this.usersRepository.find();
-  }
+      // if (!user) {
+      //   throw new NotFoundException(`User with ID ${id} not found`);
+      // }
+
+      return this.usersRepository.findOne({
+          where: { id },
+          select: ['id', 'email', 'name', 'phone', 'createdAt']
+        });
+    }
+
+    async findAll() {
+      return this.usersRepository.find({
+        select: ['id', 'email', 'name', 'phone', 'createdAt'],
+      });
+    }
 
 }

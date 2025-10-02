@@ -22,6 +22,13 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getCurrentUser(@Request() req) {
+    // req.user содержит данные из JWT токена
+    return this.authService.findUserById(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('test-protected')
   async testProtected(@Request() req) {
     return req.user;
@@ -37,6 +44,6 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res) {
     const token = await this.authService.login(req.user);
-    res.redirect(`http://194.62.19.106:3000/login-success?token=${token.access_token}`);
+    res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
   }
 }
