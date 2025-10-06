@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class SettingsService {
@@ -75,5 +76,31 @@ export class SettingsService {
     }
 
     return user;
+  }
+
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+    const user = await this.usersRepository.findOne({ 
+      where: { id: userId } 
+    });
+    
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    // Проверяем текущий пароль
+    const isCurrentPasswordValid = await user.comparePassword(changePasswordDto.currentPassword);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Неверный текущий пароль');
+    }
+
+    // Новый пароль (автоматически хешируется благодаря @BeforeUpdate)
+    user.password = changePasswordDto.newPassword;
+    
+    await this.usersRepository.save(user);
+
+    return {
+      message: 'Пароль успешно изменен',
+      status: 'success'
+    };
   }
 }
