@@ -6,18 +6,8 @@ import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // app.use((req, res, next) => {
-  //   if (req.method === 'OPTIONS') {
-  //     res.header('Access-Control-Allow-Origin', 'http://shop.montegroup.by');
-  //     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  //     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  //     res.status(200).end();
-  //   } else {
-  //     next();
-  //   }
-  // });
 
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 

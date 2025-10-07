@@ -56,8 +56,8 @@ export class SettingsService {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    // Здесь логика сохранения файла
-    const avatarUrl = `/uploads/avatars/${file.filename}`;
+    const filename = file.filename || file.originalname;
+    const avatarUrl = `/uploads/avatars/${filename}`;
     
     user.avatar = avatarUrl;
     await this.usersRepository.save(user);
