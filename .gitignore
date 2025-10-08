@@ -4,6 +4,7 @@ backend-deploy.zip
 /dist
 /node_modules
 /build
+/uploads
 
 # Logs
 logs
