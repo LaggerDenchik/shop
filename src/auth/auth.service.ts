@@ -1,10 +1,12 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { EmailVerification } from './entities/email-verification.entity';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class AuthService {
@@ -18,9 +20,81 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+
+    @InjectRepository(EmailVerification)
+    private readonly verificationRepository: Repository<EmailVerification>,
   ) {}
 
-  
+  async sendVerificationCode(email: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user) throw new BadRequestException('Пользователь не найден');
+
+    if (user.isEmailVerified) {
+      throw new BadRequestException('Email уже подтвержден');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
+
+    const record = this.verificationRepository.create({ email, code, expiresAt });
+    await this.verificationRepository.save(record);
+
+    await this.sendEmail(email, code);
+  }
+
+  async verifyEmailCode(email: string, code: string): Promise<void> {
+    const record = await this.verificationRepository.findOne({
+      where: { email, code },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!record) throw new BadRequestException('Неверный код');
+    if (record.expiresAt < new Date()) throw new BadRequestException('Код истёк');
+
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user) throw new BadRequestException('Пользователь не найден');
+
+    user.isEmailVerified = true;
+    await this.usersRepository.save(user);
+
+    await this.verificationRepository.delete({ email }); // очищаем старые коды
+  }
+
+  async resendVerificationCode(email: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user) throw new BadRequestException('Пользователь не найден');
+    if (user.isEmailVerified) throw new BadRequestException('Email уже подтвержден');
+
+    await this.sendVerificationCode(email);
+  }
+
+  private async sendEmail(email: string, code: string) {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true', // true для SSL (465)
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"MonteGroup" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Подтверждение электронной почты',
+      text: `Ваш код подтверждения: ${code}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px;">
+          <h2>Подтверждение регистрации</h2>
+          <p>Ваш код подтверждения:</p>
+          <h1 style="color: #2a7ae2;">${code}</h1>
+          <p>Он действителен 15 минут.</p>
+        </div>
+      `,
+    });
+  }
+
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersRepository.findOne({ 

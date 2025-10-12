@@ -34,16 +34,34 @@ export class AuthController {
     return req.user;
   }
 
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googleAuth() {
-    // Инициирует аутентификацию через Google
+  @Post('send-verification-code')
+  async sendVerification(@Body('email') email: string) {
+    await this.authService.sendVerificationCode(email);
+    return { message: 'Код подтверждения отправлен на почту' };
   }
+
+  @Post('verify-email')
+  async verifyEmail(@Body() body: { email: string; code: string }) {
+    await this.authService.verifyEmailCode(body.email, body.code);
+    return { message: 'Email успешно подтверждён' };
+  }
+
+  @Post('resend-verification')
+  async resend(@Body('email') email: string) {
+    await this.authService.resendVerificationCode(email);
+    return { message: 'Код повторно отправлен' };
+  }
+
+  // @Get('google')
+  // @UseGuards(AuthGuard('google'))
+  // async googleAuth() {
+  //   // Инициирует аутентификацию через Google
+  // }
   
-  @Get('google/redirect')
-  @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req, @Res() res) {
-    const token = await this.authService.login(req.user);
-    res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
-  }
+  // @Get('google/redirect')
+  // @UseGuards(AuthGuard('google'))
+  // async googleAuthRedirect(@Req() req, @Res() res) {
+  //   const token = await this.authService.login(req.user);
+  //   res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
+  // }
 }
