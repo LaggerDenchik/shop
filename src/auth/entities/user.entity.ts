@@ -1,48 +1,72 @@
-import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, Unique, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, BeforeUpdate, ManyToOne, JoinColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Role } from './role.entity';
+import { Organization } from './organization.entity';
 
-@Entity()
-// @Unique(['email']) // уникальный индекс
+@Entity('users')
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ unique: true })
+  @Column({ name: 'email', type: 'varchar', unique: true, nullable: false })
   email: string;
 
-  @Column()
+  @Column({ name: 'password', type: 'varchar', nullable: false })
   password: string;
 
-  @Column({ nullable: true })
-  name: string;
+  @Column({ name: 'full_name', type: 'varchar', nullable: true })
+  fullName?: string;
 
-  @Column({ nullable: true })
-  avatar: string; // URL к аватарке
+  @Column({ name: 'role_id', type: 'uuid', nullable: true })
+  roleId?: string;
 
-  @Column({ nullable: true })
-  provider?: string; // 'google', 'local'
+  @ManyToOne(() => Role)
+  @JoinColumn({ name: 'role_id' })
+  role?: Role;
 
-  @Column({ default: false })
+  @Column({ name: 'organization_id', type: 'uuid', nullable: true })
+  organizationId?: string;
+
+  @ManyToOne(() => Organization)
+  @JoinColumn({ name: 'organization_id' })
+  organization?: Organization;
+
+  @Column({ name: 'avatar', type: 'varchar', nullable: true })
+  avatar?: string;
+
+  @Column({ name: 'provider', type: 'varchar', nullable: true })
+  provider?: string;
+
+  @Column({ name: 'isverified', type: 'boolean', default: false })
   isVerified: boolean;
 
-  @Column({ nullable: true }) 
-  phone: string;
+  @Column({ name: 'phone', type: 'varchar', nullable: true })
+  phone?: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'type',
+    type: 'enum',
+    enum: ['staff', 'customer'],
+    default: 'customer',
+  })
+  type: 'staff' | 'customer';
+
+  @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @Column({ default: false })
+  @Column({ name: 'is_email_verified', type: 'boolean', default: false })
   isEmailVerified: boolean;
 
   @BeforeInsert()
   async hashPassword() {
-    this.password = await bcrypt.hash(this.password, 10);
+    if (this.password) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
   }
 
   @BeforeUpdate()
   async hashPasswordOnUpdate() {
-    // Хешируем пароль только если он был изменен
-    if (this.password && this.password.length < 60) { 
+    if (this.password && this.password.length < 60) {
       this.password = await bcrypt.hash(this.password, 10);
     }
   }

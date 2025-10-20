@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-import { AuthGuard } from '@nestjs/passport';
+// import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -34,24 +34,32 @@ export class AuthController {
     return req.user;
   }
 
-  @Post('send-verification-code')
-  async sendVerification(@Body('email') email: string) {
-    await this.authService.sendVerificationCode(email);
-    return { message: 'Код подтверждения отправлен на почту' };
-  }
+  // ============== endpoint'ы для верификации почты, пока не используем, поскольку нет SSL сертификата ===============
 
-  @Post('verify-email')
-  async verifyEmail(@Body() body: { email: string; code: string }) {
-    await this.authService.verifyEmailCode(body.email, body.code);
-    return { message: 'Email успешно подтверждён' };
-  }
 
-  @Post('resend-verification')
-  async resend(@Body('email') email: string) {
-    await this.authService.resendVerificationCode(email);
-    return { message: 'Код повторно отправлен' };
-  }
+  // @Post('send-verification-code')
+  // async sendVerification(@Body('email') email: string) {
+  //   await this.authService.sendVerificationCode(email);
+  //   return { message: 'Код подтверждения отправлен на почту' };
+  // }
 
+  // @Post('verify-email')
+  // async verifyEmail(@Body() body: { email: string; code: string }) {
+  //   await this.authService.verifyEmailCode(body.email, body.code);
+  //   return { message: 'Email успешно подтверждён' };
+  // }
+
+  // @Post('resend-verification')
+  // async resend(@Body('email') email: string) {
+  //   await this.authService.resendVerificationCode(email);
+  //   return { message: 'Код повторно отправлен' };
+  // }
+  
+
+  
+  // ============== endpoint'ы для гугла =================
+
+  
   // @Get('google')
   // @UseGuards(AuthGuard('google'))
   // async googleAuth() {

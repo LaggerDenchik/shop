@@ -23,6 +23,8 @@ import { EmailVerification } from './entities/email-verification.entity';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.getOrThrow('JWT_SECRET'),
         signOptions: { expiresIn: '1h' },
+        logging: true, 
+        logger: 'advanced-console'
       }),
       inject: [ConfigService],
     }),

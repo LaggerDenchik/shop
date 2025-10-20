@@ -11,7 +11,7 @@ export class CabinetsService {
   ) {}
 
   
-   async findUserById(id: number) {
+   async findUserById(id: string) {
       // const user = await this.usersRepository.findOne({
       //   where: { id }, 
       //   select: ['id', 'email', 'name'], 
@@ -23,13 +23,13 @@ export class CabinetsService {
 
       return this.usersRepository.findOne({
           where: { id },
-          select: ['id', 'email', 'name', 'phone', 'createdAt']
+          select: ['id', 'email', 'fullName', 'phone', 'createdAt']
         });
     }
 
     async findAll() {
       return this.usersRepository.find({
-        select: ['id', 'email', 'name', 'phone', 'createdAt'],
+        select: ['id', 'email', 'fullName', 'phone', 'createdAt'],
       });
     }
 

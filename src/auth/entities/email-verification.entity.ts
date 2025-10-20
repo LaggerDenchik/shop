@@ -15,5 +15,5 @@ export class EmailVerification {
   expiresAt: Date;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 }

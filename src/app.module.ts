@@ -24,7 +24,9 @@ import { SettingsModule } from './settings/settings.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: false,
+        migrationsRun: false, 
+        autoLoadEntities: true, 
         logging: configService.get('NODE_ENV') !== 'production',
         extra: {
           ssl: configService.get('NODE_ENV') === 'production' 

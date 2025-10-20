@@ -12,7 +12,7 @@ export class SettingsService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async updateUserSettings(userId: number, updateSettingsDto: UpdateSettingsDto) {
+  async updateUserSettings(userId: string, updateSettingsDto: UpdateSettingsDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     
     if (!user) {
@@ -35,7 +35,7 @@ export class SettingsService {
 
     // Обновление остальных полей
     if (updateSettingsDto.name !== undefined) {
-      user.name = updateSettingsDto.name;
+      user.fullName = updateSettingsDto.name;
     }
 
     if (updateSettingsDto.avatar !== undefined) {
@@ -49,7 +49,7 @@ export class SettingsService {
     return await this.usersRepository.save(user);
   }
 
-  async uploadAvatar(userId: number, file: Express.Multer.File) {
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     
     if (!user) {
@@ -65,10 +65,10 @@ export class SettingsService {
     return { avatarUrl };
   }
 
-  async getUserProfile(userId: number) {
+  async getUserProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      select: ['id', 'email', 'name', 'avatar', 'phone', 'createdAt']
+      select: ['id', 'email', 'fullName', 'avatar', 'phone', 'createdAt']
     });
 
     if (!user) {
@@ -78,7 +78,7 @@ export class SettingsService {
     return user;
   }
 
-  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const user = await this.usersRepository.findOne({ 
       where: { id: userId } 
     });

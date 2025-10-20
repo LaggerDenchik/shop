@@ -6,7 +6,7 @@ export class CabinetsController {
   constructor(private readonly cabinetsService: CabinetsService) { }
 
   @Get(':id')
-  getUserById(@Param('id') id: number) {
+  getUserById(@Param('id') id: string) {
     return this.cabinetsService.findUserById(id);
   }
 
