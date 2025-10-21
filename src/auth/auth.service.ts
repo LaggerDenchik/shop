@@ -12,10 +12,10 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  async findUserById(id: string) {
+  async findUserById(id: string, relations: string[] = []) {
     return this.usersRepository.findOne({
       where: { id },
-      select: ['id', 'email', 'fullName', 'phone', 'createdAt']
+      relations
     });
   }
   constructor(

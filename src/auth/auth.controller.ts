@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -7,6 +7,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @Controller('auth')
 export class AuthController {
+  usersRepository: any;
   constructor(private authService: AuthService) {}
 
   @Post('register')
@@ -27,11 +28,24 @@ export class AuthController {
     // req.user содержит данные из JWT токена
     return this.authService.findUserById(req.user.id);
   }
+  
+  @UseGuards(JwtAuthGuard)
+  @Get('organization')
+  async getMyOrganization(@Request() req) {
+    const user = await this.authService.findUserById(req.user.id, ['organization']);
 
-  @Post('test-login')
-  async testLogin(@Body() body) {
-    return this.authService.validateLogin(body.login, body.password);
+    if (!user?.organization) {
+      throw new NotFoundException('Организация не найдена для данного пользователя');
+    }
+
+    return user.organization;
   }
+
+
+  // @Post('test-login')
+  // async testLogin(@Body() body) {
+  //   return this.authService.validateLogin(body.login, body.password);
+  // }
 
   // ============== endpoint'ы для верификации почты, пока не используем, поскольку нет SSL сертификата ===============
 
