@@ -43,13 +43,8 @@ export class User {
   @Column({ name: 'phone', type: 'varchar', nullable: true })
   phone?: string;
 
-  @Column({
-    name: 'type',
-    type: 'enum',
-    enum: ['staff', 'customer'],
-    default: 'customer',
-  })
-  type: 'staff' | 'customer';
+  @Column({ name: 'type', type: 'varchar', default: 'customer' })
+  type: string;
 
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

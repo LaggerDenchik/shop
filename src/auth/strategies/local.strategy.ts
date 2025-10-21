@@ -4,19 +4,16 @@ import { Strategy } from 'passport-local';
 import { AuthService } from '../auth.service';
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
+export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
-    super({ usernameField: 'email' });
+    super({ usernameField: 'login' }); // универсальное для email или phone
   }
 
-  async validate(email: string, password: string) {
-    // console.log(`Auth attempt: ${email}`); это был дебаг, пытался понять что не так
-    const user = await this.authService.validateUser(email, password);
+  async validate(login: string, password: string) {
+    const user = await this.authService.validateLogin(login, password);
     if (!user) {
-      console.log('Invalid credentials for:', email);
       throw new UnauthorizedException('Неверные учетные данные');
     }
-    // console.log('Auth success:', user.email);
     return user;
   }
 }

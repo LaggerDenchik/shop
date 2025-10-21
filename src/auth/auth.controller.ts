@@ -28,10 +28,9 @@ export class AuthController {
     return this.authService.findUserById(req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('test-protected')
-  async testProtected(@Request() req) {
-    return req.user;
+  @Post('test-login')
+  async testLogin(@Body() body) {
+    return this.authService.validateLogin(body.login, body.password);
   }
 
   // ============== endpoint'ы для верификации почты, пока не используем, поскольку нет SSL сертификата ===============

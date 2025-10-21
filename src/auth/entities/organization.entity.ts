@@ -34,7 +34,7 @@ export class Organization {
   address?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  addressF?: string;
+  addressf?: string;
 
   @Column({ type: 'varchar', nullable: true })
   country?: string;

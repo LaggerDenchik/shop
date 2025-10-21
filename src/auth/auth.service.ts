@@ -2,7 +2,9 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User } from './entities/user.entity';  
+import { Role } from './entities/role.entity';
+import { Organization } from './entities/organization.entity';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 // import { EmailVerification } from './entities/email-verification.entity';
@@ -19,8 +21,14 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
-    private readonly jwtService: JwtService,
 
+    @InjectRepository(Organization)
+    private readonly orgRepository: Repository<Organization>,
+    
+    @InjectRepository(Role)
+    private readonly rolesRepository: Repository<Role>,
+
+    private readonly jwtService: JwtService,
     // @InjectRepository(EmailVerification)
     // private readonly verificationRepository: Repository<EmailVerification>,
   ) {}
@@ -98,46 +106,75 @@ export class AuthService {
   // }
 
 
-  async register(registerDto: RegisterDto) {
-    const { email, password, fullName, phone, type } = registerDto;
+  async register(dto: RegisterDto) {
+    const { email, phone, password, fullName, type, organizationName, representative, unp } = dto;
 
-    // Проверяем, не существует ли пользователь
-    const existing = await this.usersRepository.findOne({ where: { email } });
-    if (existing) {
-      throw new ConflictException('Пользователь с таким email уже существует');
+    if (!email && !phone) {
+      throw new BadRequestException('Укажите email или телефон');
     }
 
-    // Создаём нового пользователя
+    const existing = await this.usersRepository.findOne({
+      where: [{ email }, { phone }],
+    });
+
+    if (existing) {
+      throw new ConflictException('Пользователь с таким email или телефоном уже существует');
+    }
+
+    // роль по умолчанию — customer
+    let role = await this.rolesRepository.findOne({ where: { name: 'customer' } });
+    let organizationId: string | null = null;
+
+    // если это организация
+    if (type === 'organization') {
+      if (!organizationName) throw new BadRequestException('Не указано название организации');
+
+      const org = this.orgRepository.create({
+        name: organizationName,
+        representative: representative ?? fullName,
+        unp,
+        email,
+        phone,
+      });
+
+      const savedOrg = await this.orgRepository.save(org);
+      organizationId = savedOrg.id;
+
+      // назначаем роль org_admin
+      role = await this.rolesRepository.findOne({ where: { name: 'org_admin' } });
+    }
+
     const user = this.usersRepository.create({
       email,
+      phone,
       password,
       fullName,
-      phone,
-      type: type ?? 'customer',
-      isVerified: true, // временно без email-подтверждения
+      type: 'customer',
+      ...(organizationId ? { organizationId } : {}), // ✅ добавляем только если есть
+      roleId: role?.id,
+      isVerified: true,
       isEmailVerified: true,
     });
 
+
     await this.usersRepository.save(user);
 
-    // Возвращаем токен
     return this.generateToken(user);
   }
 
 
-
-  async validateUser(email: string, password: string): Promise<User | null> {
+  async validateLogin(login: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
-      where: { email },
-      select: ['id', 'email', 'password', 'fullName', 'phone', 'type', 'createdAt'],
+      where: [{ email: login }, { phone: login }],
+      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt'],
     });
 
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return null;
-
-    return user;
+    return isMatch ? user : null;
   }
 
   async validateUserById(userId: string) {

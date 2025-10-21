@@ -1,22 +1,35 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsIn } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsIn, IsPhoneNumber } from 'class-validator';
 
 export class RegisterDto {
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  password: string;
-
-  @IsString()
   @IsOptional()
-  fullName?: string;
-
-  @IsString()
-  @IsOptional()
+  @IsPhoneNumber()
   phone?: string;
 
-  @IsIn(['staff', 'customer'])
+  @IsString()
+  password: string;
+
   @IsOptional()
-  type?: 'staff' | 'customer';
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsIn(['customer', 'staff', 'organization'])
+  type?: 'customer' | 'staff' | 'organization';
+
+  // поля для юрлица
+  @IsOptional()
+  @IsString()
+  organizationName?: string;
+
+  @IsOptional()
+  @IsString()
+  representative?: string;
+
+  @IsOptional()
+  @IsString()
+  unp?: string;
 }
