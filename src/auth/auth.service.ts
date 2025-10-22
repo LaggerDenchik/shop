@@ -166,12 +166,10 @@ export class AuthService {
   async validateLogin(login: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
       where: [{ email: login }, { phone: login }],
-      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt'],
+      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt', 'roleId'],
     });
 
-    if (!user) {
-      return null;
-    }
+    if (!user) return null;
 
     const isMatch = await bcrypt.compare(password, user.password);
     return isMatch ? user : null;
@@ -181,8 +179,36 @@ export class AuthService {
     return this.usersRepository.findOne({ where: { id: userId } });
   }
 
-  async login(user: User) {
-    return this.generateToken(user);
+  async login(user: any) {
+    // По умолчанию — физлицо
+    let userType = 'customer';
+
+    // Проверяем role_id
+    if (
+      user.roleId === 'b305b4e2-f078-4a27-90fd-cb3322cf7d1e' || // org_admin
+      user.roleId === '7fc971b0-50b4-4b00-be6b-bba457656160'    // org_user
+    ) {
+      userType = 'organization';
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      type: userType,
+      name: user.fullName,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
+        roleId: user.roleId,
+        createdAt: user.createdAt,
+      },
+    };
   }
 
   async validateOrCreateUser(profile: {
