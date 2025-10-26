@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -150,7 +150,7 @@ export class AuthService {
       password,
       fullName,
       type: 'customer',
-      ...(organizationId ? { organizationId } : {}), // ✅ добавляем только если есть
+      ...(organizationId ? { organizationId } : {}),
       roleId: role?.id,
       isVerified: true,
       isEmailVerified: true,
@@ -161,7 +161,6 @@ export class AuthService {
 
     return this.generateToken(user);
   }
-
 
   async validateLogin(login: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
@@ -207,6 +206,7 @@ export class AuthService {
         phone: user.phone,
         roleId: user.roleId,
         createdAt: user.createdAt,
+        type: userType,
       },
     };
   }
@@ -238,6 +238,27 @@ export class AuthService {
     });
 
     return fullUser;
+  }
+
+  async updateOrganization(orgId: string, data: any) {
+    const organization = await this.orgRepository.findOne({ where: { id: orgId } });
+
+    if (!organization) {
+      throw new NotFoundException('Организация не найдена');
+    }
+
+    Object.assign(organization, {
+      name: data.name ?? organization.name,
+      representative: data.representative ?? organization.representative,
+      email: data.email ?? organization.email,
+      phone: data.phone ?? organization.phone,
+      unp: data.unp ?? organization.unp,
+      address: data.address ?? organization.address,
+      description: data.description ?? organization.description,
+    });
+
+    await this.orgRepository.save(organization);
+    return organization;
   }
 
   private async generateToken(user: User) {

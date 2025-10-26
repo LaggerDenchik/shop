@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException, Put } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -38,9 +38,31 @@ export class AuthController {
       throw new NotFoundException('Организация не найдена для данного пользователя');
     }
 
-    return user.organization;
+    const org = user.organization;
+
+    return {
+      ...org,
+      avatar: user.avatar
+        ? `${user.avatar}`
+        : null
+    };
   }
 
+  
+  @UseGuards(JwtAuthGuard)
+  @Put('organization')
+  async updateMyOrganization(@Request() req, @Body() body) {
+    if (!req.user?.id) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const user = await this.authService.findUserById(req.user.id);
+    if (!user?.organizationId) {
+      throw new NotFoundException('Организация не найдена');
+    }
+
+    return this.authService.updateOrganization(user.organizationId, body);
+  }
 
   // @Post('test-login')
   // async testLogin(@Body() body) {
