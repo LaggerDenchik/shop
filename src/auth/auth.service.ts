@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -182,7 +182,18 @@ export class AuthService {
     // По умолчанию — физлицо
     let userType = 'customer';
 
-    // Проверяем role_id
+    // Загружаем роль пользователя
+    const userWithRole = await this.usersRepository.findOne({
+      where: { id: user.id },
+      relations: ['role'],
+    });
+
+    // Безопасная проверка
+    const roleName = userWithRole?.role?.name || null;
+    const permissions = userWithRole?.role?.permissions || [];
+    const subtype = userWithRole?.role?.name || null;
+
+    // Проверяем роль для определения типа личного кабинета
     if (
       user.roleId === 'b305b4e2-f078-4a27-90fd-cb3322cf7d1e' || // org_admin
       user.roleId === '7fc971b0-50b4-4b00-be6b-bba457656160'    // org_user
@@ -205,11 +216,14 @@ export class AuthService {
         fullName: user.fullName,
         phone: user.phone,
         roleId: user.roleId,
+        roleName,
+        permissions,
         createdAt: user.createdAt,
-        type: userType,
+        type: userType, subtype,
       },
     };
   }
+
 
   async validateOrCreateUser(profile: {
     email: string;
@@ -260,6 +274,92 @@ export class AuthService {
     await this.orgRepository.save(organization);
     return organization;
   }
+
+ // Получение списка сотрудников
+  async getOrganizationEmployees(userId: string) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['organization'],
+    });
+
+    if (!user?.organizationId) {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    return this.usersRepository.find({
+      where: {
+        organizationId: user.organizationId,
+        roleId: '7fc971b0-50b4-4b00-be6b-bba457656160', // org_user
+      },
+      select: ['id', 'email', 'fullName', 'phone', 'createdAt'],
+    });
+  }
+
+  // Создание сотрудника
+  async createEmployee(userId: string, dto: any) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+
+    if (!user?.organizationId) {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    const existing = await this.usersRepository.findOne({ where: { email: dto.email } });
+    if (existing) {
+      throw new ConflictException('Пользователь с таким email уже существует');
+    }
+
+    const role = await this.rolesRepository.findOne({
+      where: { id: '7fc971b0-50b4-4b00-be6b-bba457656160' }, // org_user
+    });
+
+    if (!role) throw new NotFoundException('Роль org_user не найдена');
+
+    // Если пароль пришёл — используем его, иначе генерируем
+    const plainPassword = dto.password || Math.random().toString(36);
+
+    const newEmployee = this.usersRepository.create({
+      email: dto.email,
+      fullName: dto.fullName,
+      phone: dto.phone,
+      password: plainPassword,
+      organizationId: user.organizationId,
+      roleId: role.id,
+      type: 'customer',
+      isEmailVerified: true,
+    });
+
+    const saved = await this.usersRepository.save(newEmployee);
+
+    return {
+      id: saved.id,
+      email: saved.email,
+      password: plainPassword,
+    };
+  }
+
+
+  // Обновление данных сотрудника
+  async updateEmployee(userId: string, employeeId: string, dto: any) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user?.organizationId) {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    const employee = await this.usersRepository.findOne({
+      where: { id: employeeId },
+    });
+
+    if (!employee || employee.organizationId !== user.organizationId) {
+      throw new ForbiddenException('Нет доступа');
+    }
+
+    Object.assign(employee, dto);
+    return this.usersRepository.save(employee);
+  }
+
 
   private async generateToken(user: User) {
     const payload = {
