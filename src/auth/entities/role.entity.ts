@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 import { User } from './user.entity';
+import { Permission } from './permission.entity';
 
 @Entity('roles')
 export class Role {
@@ -18,10 +19,14 @@ export class Role {
   })
   scope: 'global' | 'organization' | 'client';
 
-  // JSON с разрешениями (пример: ["orders:view", "catalog:edit"])
-  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
-  permissions: string[];
-
   @OneToMany(() => User, (user) => user.role)
   users: User[];
+
+  @ManyToMany(() => Permission, { eager: true })
+  @JoinTable({
+    name: 'role_permissions',
+    joinColumn: { name: 'role_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
+  })
+  permissions: Permission[];
 }

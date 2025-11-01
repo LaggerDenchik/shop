@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException, Put, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException, Put, Param, Delete, Patch } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -81,7 +81,22 @@ export class AuthController {
   async updateEmployee(@Request() req, @Param('id') id: string, @Body() body) {
     return this.authService.updateEmployee(req.user.id, id, body);
   }
-  
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('employees/:id')
+  async deleteEmployee(
+    @Req() req,
+    @Param('id') employeeId: string
+  ) {
+    return this.authService.deleteEmployee(req.user.id, employeeId);
+  }
+
+  @Patch('employees/:id/reset-password')
+  @UseGuards(JwtAuthGuard)
+  async resetEmployeePassword(@Request() req, @Param('id') id: string) {
+    return this.authService.resetEmployeePassword(req.user.sub, id);
+  }
+    
   // @Post('test-login')
   // async testLogin(@Body() body) {
   //   return this.authService.validateLogin(body.login, body.password);

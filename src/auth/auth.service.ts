@@ -113,22 +113,16 @@ export class AuthService {
       throw new BadRequestException('Укажите email или телефон');
     }
 
-    const existing = await this.usersRepository.findOne({
-      where: [{ email }, { phone }],
-    });
+    const existing = await this.usersRepository.findOne({ where: [{ email }, { phone }] });
+    if (existing) throw new ConflictException('Пользователь уже существует');
 
-    if (existing) {
-      throw new ConflictException('Пользователь с таким email или телефоном уже существует');
-    }
-
-    // роль по умолчанию — customer
-    let role = await this.rolesRepository.findOne({ where: { name: 'customer' } });
     let organizationId: string | null = null;
+    let role: Role | null = null;
 
-    // если это организация
     if (type === 'organization') {
       if (!organizationName) throw new BadRequestException('Не указано название организации');
 
+      // Создаём организацию
       const org = this.orgRepository.create({
         name: organizationName,
         representative: representative ?? fullName,
@@ -136,31 +130,47 @@ export class AuthService {
         email,
         phone,
       });
-
       const savedOrg = await this.orgRepository.save(org);
       organizationId = savedOrg.id;
 
-      // назначаем роль org_admin
-      role = await this.rolesRepository.findOne({ where: { name: 'org_admin' } });
+      // Назначаем роль org_admin
+      role = await this.rolesRepository.findOne({
+        where: { name: 'org_admin' },
+        relations: ['permissions'],
+      });
+    } else {
+      // Обычный клиент
+      role = await this.rolesRepository.findOne({
+        where: { name: 'customer' },
+        relations: ['permissions'],
+      });
     }
 
+    // Создаём пользователя
     const user = this.usersRepository.create({
       email,
       phone,
       password,
       fullName,
-      type: 'customer',
-      ...(organizationId ? { organizationId } : {}),
+      type,
+      organizationId,
       roleId: role?.id,
       isVerified: true,
       isEmailVerified: true,
     });
 
-
     await this.usersRepository.save(user);
+
+    // Добавляем права из роли пользователю
+    if (role?.permissions?.length) {
+      user.permissions = role.permissions; 
+      await this.usersRepository.save(user);
+    }
 
     return this.generateToken(user);
   }
+
+
 
   async validateLogin(login: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
@@ -178,52 +188,57 @@ export class AuthService {
     return this.usersRepository.findOne({ where: { id: userId } });
   }
 
-  async login(user: any) {
-    // По умолчанию — физлицо
-    let userType = 'customer';
-
-    // Загружаем роль пользователя
-    const userWithRole = await this.usersRepository.findOne({
+  async login(user: User) {
+    // Загружаем пользователя со связями role и permissions
+    const userWithRelations = await this.usersRepository.findOne({
       where: { id: user.id },
-      relations: ['role'],
+      relations: ['role', 'role.permissions', 'permissions'], // важно!
     });
 
-    // Безопасная проверка
-    const roleName = userWithRole?.role?.name || null;
-    const permissions = userWithRole?.role?.permissions || [];
-    const subtype = userWithRole?.role?.name || null;
-
-    // Проверяем роль для определения типа личного кабинета
-    if (
-      user.roleId === 'b305b4e2-f078-4a27-90fd-cb3322cf7d1e' || // org_admin
-      user.roleId === '7fc971b0-50b4-4b00-be6b-bba457656160'    // org_user
-    ) {
-      userType = 'organization';
+    if (!userWithRelations) {
+      throw new NotFoundException('Пользователь не найден');
     }
 
+    // Определяем тип пользователя (для маршрутизации фронта)
+    let userType = 'customer';
+    if (
+      userWithRelations.role?.name === 'org_admin' ||
+      userWithRelations.role?.name === 'org_user'
+    ) {
+      userType = 'organization';
+    } else if (userWithRelations.role?.name?.includes('admin')) {
+      userType = 'admin';
+    }
+
+    // Объединяем права из роли и персональные
+    const rolePerms = userWithRelations.role?.permissions?.map(p => p.tag) || [];
+    const userPerms = userWithRelations.permissions?.map(p => p.tag) || [];
+
+    // Убираем дубликаты
+    const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
+
     const payload = {
-      sub: user.id,
-      email: user.email,
+      sub: userWithRelations.id,
+      email: userWithRelations.email,
       type: userType,
-      name: user.fullName,
+      name: userWithRelations.fullName,
     };
 
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        phone: user.phone,
-        roleId: user.roleId,
-        roleName,
-        permissions,
-        createdAt: user.createdAt,
-        type: userType, subtype,
+        id: userWithRelations.id,
+        email: userWithRelations.email,
+        fullName: userWithRelations.fullName,
+        phone: userWithRelations.phone,
+        roleId: userWithRelations.roleId,
+        roleName: userWithRelations.role?.name,
+        permissions: mergedPermissions,
+        createdAt: userWithRelations.createdAt,
+        type: userType,
       },
     };
   }
-
 
   async validateOrCreateUser(profile: {
     email: string;
@@ -360,6 +375,54 @@ export class AuthService {
     return this.usersRepository.save(employee);
   }
 
+  async deleteEmployee(userId: string, employeeId: string) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+
+    if (!user?.organizationId) {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    const employee = await this.usersRepository.findOne({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Сотрудник не найден');
+    }
+
+    if (employee.organizationId !== user.organizationId) {
+      throw new ForbiddenException('Нет доступа к удалению этого сотрудника');
+    }
+
+    await this.usersRepository.remove(employee);
+
+    return { message: 'Сотрудник успешно удалён' };
+  }
+
+  async resetEmployeePassword(orgUserId: string, employeeId: string) {
+    const orgUser = await this.usersRepository.findOne({ where: { id: orgUserId } });
+    if (!orgUser?.organizationId) {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    const employee = await this.usersRepository.findOne({
+      where: { id: employeeId, organizationId: orgUser.organizationId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Сотрудник не найден или не принадлежит вашей организации');
+    }
+
+    const newPlainPassword = Math.random().toString(36).slice(-8);
+    employee.password = await bcrypt.hash(newPlainPassword, 10);
+    await this.usersRepository.save(employee);
+
+    return {
+      message: 'Пароль успешно сброшен',
+      email: employee.email,
+      newPassword: newPlainPassword,
+    };
+  }
 
   private async generateToken(user: User) {
     const payload = {
