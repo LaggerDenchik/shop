@@ -14,12 +14,13 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailVerification } from './entities/email-verification.entity';
 import { Role } from './entities/role.entity';
+import { Permission } from './entities/permission.entity';
 
 @Module({
   imports: [
     ConfigModule,
     PassportModule,
-    TypeOrmModule.forFeature([User, Organization, EmailVerification, Role]),
+    TypeOrmModule.forFeature([User, Organization, EmailVerification, Role, Permission]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

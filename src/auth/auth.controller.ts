@@ -47,7 +47,6 @@ export class AuthController {
         : null
     };
   }
-
   
   @UseGuards(JwtAuthGuard)
   @Put('organization')
@@ -95,6 +94,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async resetEmployeePassword(@Request() req, @Param('id') id: string) {
     return this.authService.resetEmployeePassword(req.user.sub, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('permissions')
+  async getAllPermissions() {
+    return this.authService.getAllPermissions();
   }
     
   // @Post('test-login')

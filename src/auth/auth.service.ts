@@ -7,6 +7,7 @@ import { Role } from './entities/role.entity';
 import { Organization } from './entities/organization.entity';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { Permission } from './entities/permission.entity';
 // import { EmailVerification } from './entities/email-verification.entity';
 // import * as nodemailer from 'nodemailer';
 
@@ -27,6 +28,9 @@ export class AuthService {
     
     @InjectRepository(Role)
     private readonly rolesRepository: Repository<Role>,
+    
+    @InjectRepository(Permission)
+    private readonly permissionsRepository: Repository<Permission>,
 
     private readonly jwtService: JwtService,
     // @InjectRepository(EmailVerification)
@@ -422,6 +426,26 @@ export class AuthService {
       email: employee.email,
       newPassword: newPlainPassword,
     };
+  }
+
+  async getAllPermissions() {
+    const permissions = await this.permissionsRepository.find({
+      order: { groups: 'ASC', name: 'ASC' },
+    });
+
+    // Можно вернуть структурировано по группам
+    const grouped = permissions.reduce((acc, perm) => {
+      const group = perm.groups || 'general';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push({
+        id: perm.id,
+        tag: perm.tag,
+        name: perm.name,
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return grouped;
   }
 
   private async generateToken(user: User) {

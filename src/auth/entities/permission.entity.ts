@@ -13,6 +13,9 @@ export class Permission {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  groups?: string;
+
   @ManyToMany(() => Role, (role) => role.permissions)
   roles: Role[];
 
