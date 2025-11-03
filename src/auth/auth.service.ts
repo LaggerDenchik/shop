@@ -222,24 +222,29 @@ export class AuthService {
     const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
 
     const payload = {
-      sub: userWithRelations.id,
-      email: userWithRelations.email,
-      type: userType,
-      name: userWithRelations.fullName,
+      sub: user.id,
+      email: user.email,
+      type: user.type,
+      organizationId: user.organizationId || null,
+      role: user.role?.name || null,
+      permissions: [
+        ...(user.permissions?.map(p => p.tag) || []),
+        ...(user.role?.permissions?.map(p => p.tag) || [])
+      ]
     };
 
+    const token = this.jwtService.sign(payload);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
       user: {
-        id: userWithRelations.id,
-        email: userWithRelations.email,
-        fullName: userWithRelations.fullName,
-        phone: userWithRelations.phone,
-        roleId: userWithRelations.roleId,
-        roleName: userWithRelations.role?.name,
-        permissions: mergedPermissions,
-        createdAt: userWithRelations.createdAt,
-        type: userType,
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        type: user.type,
+        role: user.role?.name,
+        organizationId: user.organizationId,
+        permissions: payload.permissions,
       },
     };
   }
@@ -405,7 +410,7 @@ export class AuthService {
 
   async resetEmployeePassword(orgUserId: string, employeeId: string) {
     const orgUser = await this.usersRepository.findOne({ where: { id: orgUserId } });
-    if (!orgUser?.organizationId) {
+    if (!orgUser?.organizationId || orgUser.type !== 'organization') {
       throw new ForbiddenException('Вы не являетесь организацией');
     }
 
