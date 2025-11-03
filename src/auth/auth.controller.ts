@@ -98,6 +98,16 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('employees/:id/permissions')
+  async updateEmployeePermissions(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('permissions') permissions: string[],
+  ) {
+    return this.authService.updateEmployeePermissions(req.user.id, id, permissions);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('permissions')
   async getAllPermissions() {
     return this.authService.getAllPermissions();

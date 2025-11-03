@@ -316,7 +316,10 @@ export class AuthService {
 
   // Создание сотрудника
   async createEmployee(userId: string, dto: any) {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['organization'],
+    });
 
     if (!user?.organizationId) {
       throw new ForbiddenException('Вы не являетесь организацией');
@@ -328,13 +331,15 @@ export class AuthService {
     }
 
     const role = await this.rolesRepository.findOne({
-      where: { id: '7fc971b0-50b4-4b00-be6b-bba457656160' }, // org_user
+      where: { name: 'org_user' },
+      relations: ['permissions'],
     });
 
-    if (!role) throw new NotFoundException('Роль org_user не найдена');
+    if (!role) {
+      throw new NotFoundException('Роль org_user не найдена');
+    }
 
-    // Если пароль пришёл — используем его, иначе генерируем
-    const plainPassword = dto.password || Math.random().toString(36);
+    const plainPassword = dto.password || Math.random().toString(36).slice(-8);
 
     const newEmployee = this.usersRepository.create({
       email: dto.email,
@@ -345,6 +350,7 @@ export class AuthService {
       roleId: role.id,
       type: 'customer',
       isEmailVerified: true,
+      permissions: role.permissions, 
     });
 
     const saved = await this.usersRepository.save(newEmployee);
@@ -355,7 +361,6 @@ export class AuthService {
       password: plainPassword,
     };
   }
-
 
   // Обновление данных сотрудника
   async updateEmployee(userId: string, employeeId: string, dto: any) {
@@ -458,6 +463,40 @@ export class AuthService {
 
     return grouped;
   }
+
+  async updateEmployeePermissions(orgUserId: string, employeeId: string, permissionIds: string[]) {
+    const orgUser = await this.usersRepository.findOne({ where: { id: orgUserId } });
+
+    if (!orgUser?.organizationId || orgUser.type !== 'organization') {
+      throw new ForbiddenException('Вы не являетесь организацией');
+    }
+
+    const employee = await this.usersRepository.findOne({
+      where: { id: employeeId, organizationId: orgUser.organizationId },
+      relations: ['permissions'],
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Сотрудник не найден или не принадлежит вашей организации');
+    }
+
+    const newPermissions = await this.permissionsRepository.findByIds(permissionIds);
+
+    employee.permissions = newPermissions;
+    await this.usersRepository.save(employee);
+
+    return {
+      message: 'Права сотрудника успешно обновлены',
+      employeeId: employee.id,
+      permissions: newPermissions.map(p => ({
+        id: p.id,
+        tag: p.tag,
+        name: p.name,
+        group: p.groups,
+      })),
+    };
+  }
+
 
   private async generateToken(user: User) {
     const payload = {
