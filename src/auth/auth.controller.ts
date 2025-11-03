@@ -93,6 +93,7 @@ export class AuthController {
   @Patch('employees/:id/reset-password')
   @UseGuards(JwtAuthGuard)
   async resetEmployeePassword(@Request() req, @Param('id') id: string) {
+    console.log('resetEmployeePassword by user:', req.user);
     return this.authService.resetEmployeePassword(req.user.sub, id);
   }
 
