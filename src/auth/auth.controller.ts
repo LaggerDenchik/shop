@@ -112,48 +112,42 @@ export class AuthController {
   async getAllPermissions() {
     return this.authService.getAllPermissions();
   }
-    
-  // @Post('test-login')
-  // async testLogin(@Body() body) {
-  //   return this.authService.validateLogin(body.login, body.password);
-  // }
 
   // ============== endpoint'ы для верификации почты, пока не используем, поскольку нет SSL сертификата ===============
 
+  @Post('send-verification-code')
+  async sendVerification(@Body('email') email: string) {
+    await this.authService.sendVerificationCode(email);
+    return { message: 'Код подтверждения отправлен на почту' };
+  }
 
-  // @Post('send-verification-code')
-  // async sendVerification(@Body('email') email: string) {
-  //   await this.authService.sendVerificationCode(email);
-  //   return { message: 'Код подтверждения отправлен на почту' };
-  // }
+  @Post('verify-email')
+  async verifyEmail(@Body() body: { email: string; code: string }) {
+    await this.authService.verifyEmailCode(body.email, body.code);
+    return { message: 'Email успешно подтверждён' };
+  }
 
-  // @Post('verify-email')
-  // async verifyEmail(@Body() body: { email: string; code: string }) {
-  //   await this.authService.verifyEmailCode(body.email, body.code);
-  //   return { message: 'Email успешно подтверждён' };
-  // }
-
-  // @Post('resend-verification')
-  // async resend(@Body('email') email: string) {
-  //   await this.authService.resendVerificationCode(email);
-  //   return { message: 'Код повторно отправлен' };
-  // }
+  @Post('resend-verification')
+  async resend(@Body('email') email: string) {
+    await this.authService.resendVerificationCode(email);
+    return { message: 'Код повторно отправлен' };
+  }
   
 
   
   // ============== endpoint'ы для гугла =================
 
   
-  // @Get('google')
-  // @UseGuards(AuthGuard('google'))
-  // async googleAuth() {
-  //   // Инициирует аутентификацию через Google
-  // }
+//   @Get('google')
+//   @UseGuards(AuthGuard('google'))
+//   async googleAuth() {
+//     // Инициирует аутентификацию через Google
+//   }
   
-  // @Get('google/redirect')
-  // @UseGuards(AuthGuard('google'))
-  // async googleAuthRedirect(@Req() req, @Res() res) {
-  //   const token = await this.authService.login(req.user);
-  //   res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
-  // }
+//   @Get('google/redirect')
+//   @UseGuards(AuthGuard('google'))
+//   async googleAuthRedirect(@Req() req, @Res() res) {
+//     const token = await this.authService.login(req.user);
+//     res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
+//   }
 }

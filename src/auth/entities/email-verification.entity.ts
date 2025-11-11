@@ -11,7 +11,7 @@ export class EmailVerification {
   @Column()
   code: string;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 
   @CreateDateColumn()

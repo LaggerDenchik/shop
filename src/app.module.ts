@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CatalogModule } from 'catalog/catalog.module';
 import { SettingsModule } from './settings/settings.module';
+import { EmailVerification } from './auth/entities/email-verification.entity';
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { SettingsModule } from './settings/settings.module';
     AuthModule,
     CabinetsModule,
     CatalogModule,
-    SettingsModule
+    SettingsModule,
+    EmailVerification
   ],
 })
 export class AppModule {}
@@ -55,7 +57,7 @@ function getEnvFilePath(): string {
       return '.env.test';
     case 'development':
     default:
-      return 's-monte.env'; 
+      return '.env'; 
   }
 }
 
