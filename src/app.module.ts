@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CatalogModule } from 'catalog/catalog.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailVerification } from './auth/entities/email-verification.entity';
+import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { EmailVerification } from './auth/entities/email-verification.entity';
     CabinetsModule,
     CatalogModule,
     SettingsModule,
-    EmailVerification
+    EmailVerification,
+    PhoneVerificationModule
   ],
 })
 export class AppModule {}
