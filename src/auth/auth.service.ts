@@ -48,7 +48,7 @@ export class AuthService {
     // Проверка на существующий код
     const existing = await this.verificationRepository.findOne({
       where: { email },
-      order: { created_at: 'DESC' },
+      order: { createdAt: 'DESC' },
     });
 
     if (existing && existing.expiresAt > new Date()) {
@@ -67,7 +67,7 @@ export class AuthService {
   async verifyEmailCode(email: string, code: string): Promise<void> {
     const record = await this.verificationRepository.findOne({
       where: { email, code },
-      order: { created_at: 'DESC' },
+      order: { createdAt: 'DESC' },
     });
 
     if (!record) throw new BadRequestException('Неверный код подтверждения');
@@ -138,8 +138,6 @@ export class AuthService {
 
     if (type === 'organization') {
       if (!organizationName) throw new BadRequestException('Не указано название организации');
-
-      // Создаём организацию
       const org = this.orgRepository.create({
         name: organizationName,
         representative: representative ?? fullName,
@@ -150,20 +148,11 @@ export class AuthService {
       const savedOrg = await this.orgRepository.save(org);
       organizationId = savedOrg.id;
 
-      // Назначаем роль org_admin
-      role = await this.rolesRepository.findOne({
-        where: { name: 'org_admin' },
-        relations: ['permissions'],
-      });
+      role = await this.rolesRepository.findOne({ where: { name: 'org_admin' }, relations: ['permissions'] });
     } else {
-      // Обычный клиент
-      role = await this.rolesRepository.findOne({
-        where: { name: 'customer' },
-        relations: ['permissions'],
-      });
+      role = await this.rolesRepository.findOne({ where: { name: 'customer' }, relations: ['permissions'] });
     }
 
-    // Создаём пользователя
     const user = this.usersRepository.create({
       email,
       phone,
@@ -172,22 +161,17 @@ export class AuthService {
       type,
       organizationId,
       roleId: role?.id,
-      isVerified: true,
       isEmailVerified: false,
+      isVerified: false,
     });
 
     await this.usersRepository.save(user);
 
-    // Добавляем права из роли пользователю
-    if (role?.permissions?.length) {
-      user.permissions = role.permissions; 
-      await this.usersRepository.save(user);
-    }
+    // Сразу отправляем код подтверждения
+    await this.sendVerificationCode(user.email);
 
-    return this.generateToken(user);
+    return { message: 'Регистрация успешна. Подтвердите email, код отправлен на почту.' };
   }
-
-
 
   async validateLogin(login: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
@@ -211,9 +195,13 @@ export class AuthService {
       where: { id: user.id },
       relations: ['role', 'role.permissions', 'permissions'], // важно!
     });
-
+    
     if (!userWithRelations) {
       throw new NotFoundException('Пользователь не найден');
+    }
+
+    if (!userWithRelations.isEmailVerified) {
+      throw new ForbiddenException('Email не подтверждён');
     }
 
     // Определяем тип пользователя (для маршрутизации фронта)
