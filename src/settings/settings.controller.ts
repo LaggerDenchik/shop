@@ -54,4 +54,10 @@ export class SettingsController {
   ) {
     return this.settingsService.changePassword(req.user.id, changePasswordDto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('permissions')
+  async getAllPermissions() {
+    return this.settingsService.getAllPermissions();
+  }
 }

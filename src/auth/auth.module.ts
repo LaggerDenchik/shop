@@ -23,12 +23,12 @@ import { Permission } from './entities/permission.entity';
     TypeOrmModule.forFeature([User, Organization, EmailVerification, Role, Permission]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.getOrThrow('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-        logging: true, 
-        logger: 'advanced-console'
-      }),
+        useFactory: async (configService: ConfigService) => ({
+          secret: configService.getOrThrow('JWT_SECRET'),
+          signOptions: { expiresIn: '1h' },
+          logging: true, 
+          logger: 'advanced-console'
+        }),
       inject: [ConfigService],
     }),
   ],

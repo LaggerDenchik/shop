@@ -1,7 +1,6 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req, Res, NotFoundException, Put, Param, Delete, Patch } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 // import { AuthGuard } from '@nestjs/passport';
 
@@ -22,99 +21,6 @@ export class AuthController {
     return this.authService.login(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  async getCurrentUser(@Request() req) {
-    // req.user содержит данные из JWT токена
-    return this.authService.findUserById(req.user.id);
-  }
-  
-  @UseGuards(JwtAuthGuard)
-  @Get('organization')
-  async getMyOrganization(@Request() req) {
-    const user = await this.authService.findUserById(req.user.id, ['organization']);
-
-    if (!user?.organization) {
-      throw new NotFoundException('Организация не найдена для данного пользователя');
-    }
-
-    const org = user.organization;
-
-    return {
-      ...org,
-      avatar: user.avatar
-        ? `${user.avatar}`
-        : null
-    };
-  }
-  
-  @UseGuards(JwtAuthGuard)
-  @Put('organization')
-  async updateMyOrganization(@Request() req, @Body() body) {
-    if (!req.user?.id) {
-      throw new NotFoundException('Пользователь не найден');
-    }
-
-    const user = await this.authService.findUserById(req.user.id);
-    if (!user?.organizationId) {
-      throw new NotFoundException('Организация не найдена');
-    }
-
-    return this.authService.updateOrganization(user.organizationId, body);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('employees')
-  async getOrganizationEmployees(@Request() req) {
-    return this.authService.getOrganizationEmployees(req.user.id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('employees')
-  async createEmployee(@Request() req, @Body() body) {
-    return this.authService.createEmployee(req.user.id, body);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Put('employees/:id')
-  async updateEmployee(@Request() req, @Param('id') id: string, @Body() body) {
-    return this.authService.updateEmployee(req.user.id, id, body);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('employees/:id')
-  async deleteEmployee(
-    @Req() req,
-    @Param('id') employeeId: string
-  ) {
-    return this.authService.deleteEmployee(req.user.id, employeeId);
-  }
-
-  @Patch('employees/:id/reset-password')
-  @UseGuards(JwtAuthGuard)
-  async resetEmployeePassword(@Request() req, @Param('id') id: string) {
-    console.log('resetEmployeePassword by user:', req.user);
-    return this.authService.resetEmployeePassword(req.user.sub, id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Patch('employees/:id/permissions')
-  async updateEmployeePermissions(
-    @Request() req,
-    @Param('id') id: string,
-    @Body('permissions') permissions: string[],
-  ) {
-    return this.authService.updateEmployeePermissions(req.user.id, id, permissions);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('permissions')
-  async getAllPermissions() {
-    return this.authService.getAllPermissions();
-  }
-
-  // ============== endpoint'ы для верификации почты, пока не используем, поскольку нет SSL сертификата ===============
-
   @Post('send-verification-code')
   async sendVerification(@Body('email') email: string) {
     await this.authService.sendVerificationCode(email);
@@ -132,7 +38,6 @@ export class AuthController {
     await this.authService.resendVerificationCode(email);
     return { message: 'Код повторно отправлен' };
   }
-  
 
   
   // ============== endpoint'ы для гугла =================
@@ -150,4 +55,15 @@ export class AuthController {
 //     const token = await this.authService.login(req.user);
 //     res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
 //   }
+}
+
+
+
+
+@Controller('cabinets')
+export class CabinetsController {
+  usersRepository: any;
+  constructor(private authService: AuthService) {}
+
+  
 }

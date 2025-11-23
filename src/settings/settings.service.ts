@@ -4,13 +4,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Permission } from '../auth/entities/permission.entity';
 
 @Injectable()
 export class SettingsService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+
+    @InjectRepository(Permission)
+    private readonly permissionsRepository: Repository<Permission>,
   ) {}
+
+  async getAllPermissions() {
+      const permissions = await this.permissionsRepository.find({
+        order: { groups: 'ASC', name: 'ASC' },
+      });
+  
+      // Можно вернуть структурировано по группам
+      const grouped = permissions.reduce((acc, perm) => {
+        const group = perm.groups || 'general';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push({
+          id: perm.id,
+          tag: perm.tag,
+          name: perm.name,
+        });
+        return acc;
+      }, {} as Record<string, any[]>);
+  
+      return grouped;
+    }
 
   async updateUserSettings(userId: string, updateSettingsDto: UpdateSettingsDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
