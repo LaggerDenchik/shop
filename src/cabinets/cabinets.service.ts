@@ -23,7 +23,6 @@ export class CabinetsService {
     private readonly permissionsRepository: Repository<Permission>,
   ) {}
 
-  
   async findUserById(id: string, relations: string[] = []) {
     return this.usersRepository.findOne({
       where: { id },

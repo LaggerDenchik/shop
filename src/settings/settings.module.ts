@@ -11,10 +11,11 @@ import { EmailVerification } from '@auth/entities/email-verification.entity';
 import { JwtStrategy } from '@auth/strategies/jwt.strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Organization, EmailVerification, Role, Permission]),
+    TypeOrmModule.forFeature([User, Organization, EmailVerification, Role, Permission, PasswordResetToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
         useFactory: async (configService: ConfigService) => ({

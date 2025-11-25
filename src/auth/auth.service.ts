@@ -28,8 +28,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // времено отключил верификацию почты
-
   async sendVerificationCode(email: string): Promise<void> {
     const user = await this.usersRepository.findOne({ where: { email } });
     if (!user) throw new BadRequestException('Пользователь не найден');
@@ -111,7 +109,6 @@ export class AuthService {
       `,
     });
   }
-
 
   async register(dto: RegisterDto) {
     const { email, phone, password, fullName, type, organizationName, representative, unp } = dto;

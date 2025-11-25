@@ -56,14 +56,3 @@ export class AuthController {
 //     res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
 //   }
 }
-
-
-
-
-@Controller('cabinets')
-export class CabinetsController {
-  usersRepository: any;
-  constructor(private authService: AuthService) {}
-
-  
-}
