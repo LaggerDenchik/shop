@@ -77,8 +77,7 @@ export class CabinetsController {
   @Patch('employees/:id/reset-password')
   @UseGuards(JwtAuthGuard)
   async resetEmployeePassword(@Request() req, @Param('id') id: string) {
-    console.log('resetEmployeePassword by user:', req.user);
-    return this.cabinetsService.resetEmployeePassword(req.user.sub, id);
+    return this.cabinetsService.resetEmployeePassword(req.user.id, id);
   }
 
   @UseGuards(JwtAuthGuard)

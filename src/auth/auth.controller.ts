@@ -1,8 +1,9 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-// import { AuthGuard } from '@nestjs/passport';
+import { Response } from 'express';
+import { Res } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -16,9 +17,22 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  @HttpCode(HttpStatus.OK) // Явно указываем статус 200
-  async login(@Request() req) {
-    return this.authService.login(req.user);
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { access_token, user } = await this.authService.login(req.user);
+
+    // Сохраняем JWT в httpOnly cookie
+    res.cookie('jwt', access_token, {
+      httpOnly: true,
+      // secure: true, для продакшена
+      sameSite: 'lax', // или 'none' если фронт на другом домене с HTTPS
+      maxAge: 60 * 60 * 1000, // 1 час
+    });
+
+    return { message: 'Logged in', user };
   }
 
   @Post('send-verification-code')
@@ -37,6 +51,19 @@ export class AuthController {
   async resend(@Body('email') email: string) {
     await this.authService.resendVerificationCode(email);
     return { message: 'Код повторно отправлен' };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    // Удаляем cookie
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      // secure: true, для продакшена
+      sameSite: 'lax',
+    });
+
+    return { message: 'Logged out' };
   }
 
   
