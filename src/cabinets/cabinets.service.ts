@@ -71,9 +71,22 @@ export class CabinetsService {
     return this.usersRepository.find({
       where: {
         organizationId: user.organizationId,
-        roleId: '7fc971b0-50b4-4b00-be6b-bba457656160', // org_user
+        roleId: '7fc971b0-50b4-4b00-be6b-bba457656160',
       },
-      select: ['id', 'email', 'fullName', 'phone', 'createdAt'],
+      relations: ['permissions'],
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        createdAt: true,
+        permissions: {
+          id: true,
+          tag: true,
+          name: true,
+          groups: true,
+        },
+      },
     });
   }
 
