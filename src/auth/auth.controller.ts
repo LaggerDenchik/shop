@@ -27,11 +27,14 @@ export class AuthController {
     const { access_token, user } = await this.authService.login(req.user);
 
     // Сохраняем JWT в httpOnly cookie
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.cookie('jwt', access_token, {
       httpOnly: true,
-      // secure: true, для продакшена
-      sameSite: 'lax', // или 'none' если фронт на другом домене с HTTPS
-      maxAge: 60 * 60 * 1000, // 1 час
+      secure: isProd,           // true если https
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+      maxAge: 1000 * 60 * 60, // 1 час
     });
 
     return { message: 'Logged in', user };
@@ -59,10 +62,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     // Удаляем cookie
+    const isProd = process.env.NODE_ENV === 'production';
+    
     res.clearCookie('jwt', {
       httpOnly: true,
-      // secure: true, для продакшена
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
     });
 
     return { message: 'Logged out' };
