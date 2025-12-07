@@ -15,6 +15,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailVerification } from './entities/email-verification.entity';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
+import { CabinetsService } from '../cabinets/cabinets.service';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { Permission } from './entities/permission.entity';
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
+    AuthService,
+    CabinetsService,
     LocalStrategy, 
     JwtStrategy, 
     JwtAuthGuard,

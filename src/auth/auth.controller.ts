@@ -1,14 +1,16 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CabinetsService } from '../cabinets/cabinets.service';
 
 @Controller('auth')
 export class AuthController {
   usersRepository: any;
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private cabinetsService: CabinetsService) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -66,6 +68,32 @@ export class AuthController {
     return { message: 'Logged out' };
   }
 
+  /** Silent check + создание guest, если нет пользователя */
+  @Get('me')
+  async getProfile(@Req() req) {
+    const user = req.user;
+
+    if (!user) {
+      // Просто возвращаем "виртуального" гостя
+      return {
+        id: null,
+        fullName: 'Гость',
+        type: 'guest',
+        roleName: null,
+        permissions: [],
+        guest: true,
+      };
+    }
+
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      type: user.type,
+      roleName: user.role?.name || user.role?.tag,
+      permissions: user.permissions?.map(p => p.tag) || [],
+      guest: false,
+    };
+  }
   
   // ============== endpoint'ы для гугла =================
 

@@ -234,9 +234,9 @@ export class AuthService {
   }
 
   async validateOrCreateUser(profile: {
-    email: string;
-    fullName: string;
-    provider?: string;
+    email: string; 
+    fullName: string; 
+    provider?: string; 
   }) {
     let user = await this.usersRepository.findOne({ where: { email: profile.email } });
 
@@ -259,7 +259,33 @@ export class AuthService {
       select: ['id', 'email', 'fullName', 'phone', 'type', 'createdAt'],
     });
 
+    if (!fullUser) throw new NotFoundException('Пользователь не найден');
+
     return fullUser;
   }
 
+  /** Создать guest-пользователя */
+  async createGuestUser(): Promise<Partial<User>> {
+    return {
+      id: 'guest',
+      fullName: 'Гость',
+      type: 'guest',
+      permissions: [],
+    };
+  }
+
+  /** Генерация JWT */
+  generateJwt(user: User): string {
+    return this.jwtService.sign({ sub: user.id });
+  }
+
+  /** Обновление профиля текущего пользователя */
+  async getUserById(id: string, relations: string[] = []): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      relations,
+    });
+    if (!user) throw new NotFoundException('Пользователь не найден'); // теперь TS понимает, что user не null
+    return user;
+  }
 }
