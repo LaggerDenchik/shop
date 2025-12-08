@@ -7,6 +7,7 @@ import { CatalogModule } from 'catalog/catalog.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailVerification } from './auth/entities/email-verification.entity';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
+import { ApiPlModule } from 'planplace/apiPl.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PhoneVerificationModule } from './phone-verification/phone-verification
     AuthModule,
     CabinetsModule,
     CatalogModule,
+    ApiPlModule,
     SettingsModule,
     EmailVerification,
     PhoneVerificationModule
