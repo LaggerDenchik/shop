@@ -6,10 +6,8 @@ import { Injectable } from '@nestjs/common';
 export class ApiPlService {
     constructor(private readonly httpService: HttpService) { }
     // URL: ОсновнойURL/api/get_items/materials
-    // Рабочий: "https://planplace.ru/clients/138941121/config/index.php/api/get_items/materials?sync_key=RTsvAHK5AStl2" /api/${query}?sync_key=${this.sync_key}
-    // https://planplace.ru/clients/138941121/config/index.php/api/get_items/materials?sync_key=RTsvAHK5AStl2
-    API_HOST = "https://planplace.ru/clients/138941121/config/index.php";
-    sync_key = "RTsvAHK5AStl2";
+    API_HOST = process.env.API_HOST;
+    sync_key = process.env.SYNC_KEY;
 
     async getData(query): Promise<any> {
         // const token = await this.getToken();
