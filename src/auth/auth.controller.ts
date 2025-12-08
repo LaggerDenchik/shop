@@ -27,12 +27,10 @@ export class AuthController {
     const { access_token, user } = await this.authService.login(req.user);
 
     // Сохраняем JWT в httpOnly cookie
-    const isProd = process.env.NODE_ENV === 'production';
-
     res.cookie('jwt', access_token, {
       httpOnly: true,
-      secure: isProd,           // true если https
-      sameSite: isProd ? 'none' : 'lax',
+      secure: false,           // true если https
+      sameSite: 'none' ,
       path: '/',
       maxAge: 1000 * 60 * 60, // 1 час
     });
@@ -62,12 +60,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     // Удаляем cookie
-    const isProd = process.env.NODE_ENV === 'production';
-    
     res.clearCookie('jwt', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: false,
+      sameSite: 'none',
       path: '/',
     });
 

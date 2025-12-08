@@ -9,10 +9,11 @@ import { Request } from 'express';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
-      // Пробуем взять токен из заголовка Authorization или из cookie "jwt"
       jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (req: Request) => req?.cookies?.jwt,
+        (req: Request) => {
+          console.log('cookies:', req.cookies);
+          return req?.cookies?.jwt;
+        }
       ]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET,
