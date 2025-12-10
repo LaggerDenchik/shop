@@ -30,7 +30,7 @@ export class AuthController {
     res.cookie('jwt', access_token, {
       httpOnly: true,
       secure: false,           // true если https
-      sameSite: 'none' ,
+      sameSite: 'lax' ,
       path: '/',
       maxAge: 1000 * 60 * 60, // 1 час
     });
@@ -63,7 +63,7 @@ export class AuthController {
     res.clearCookie('jwt', {
       httpOnly: true,
       secure: false,
-      sameSite: 'none',
+      sameSite: 'lax',
       path: '/',
     });
 
