@@ -24,7 +24,7 @@ export class ApiPlController {
     if (!user.email) return console.log("none"); // none если пусто
 
     // Фильтруем по email 
-    const filtered = orders.filter(o => o.email === user.email);
+    const filtered = orders.filter(o => o.email.toLowerCase() === user.email.toLowerCase());
 
     return filtered;
   }
