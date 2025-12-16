@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards, Request, Post, Delete, Req, Patch } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards, Request, Post, Delete, Req, Patch, Query } from '@nestjs/common';
 import { CabinetsService } from './cabinets.service';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 
@@ -88,6 +88,12 @@ export class CabinetsController {
     @Body('permissions') permissions: string[],
   ) {
     return this.cabinetsService.updateEmployeePermissions(req.user.id, id, permissions);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('physical-persons')
+  async getAllPhysicalPersons() {
+    return this.cabinetsService.getAllPhysicalPersons();
   }
 
   @Get(':id')

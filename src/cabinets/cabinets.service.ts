@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Organization } from '../auth/entities/organization.entity';
 import { User } from '../auth/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -251,5 +251,23 @@ export class CabinetsService {
         group: p.groups,
       })),
     };
+  }
+
+  async getAllPhysicalPersons() {
+    const users = await this.usersRepository.find({
+      where: { type: 'customer' },
+      select: [
+        'id',
+        'email',
+        'fullName',
+        'phone'
+      ],
+      order: {
+        fullName: 'ASC',
+        email: 'ASC'
+      }
+    });
+
+    return users;
   }
 }
