@@ -9,12 +9,18 @@ import { Request } from 'express';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
+      // 
+      // jwtFromRequest: ExtractJwt.fromExtractors([
+      //   (req: Request) => {
+      //     console.log('cookies:', req.cookies);
+      //     return req?.cookies?.jwt;
+      //   }
+      // ]),
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => {
-          console.log('cookies:', req.cookies);
-          return req?.cookies?.jwt;
-        }
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req: Request) => req?.cookies?.jwt,
       ]),
+      // КОГДА ВЕРНЕМ КУКИ РАСКОМИТИТЬ ВЕРХНЮЮ ЧАСТЬ НИЖНЮЮ УДАЛИТЬ
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET,
     });

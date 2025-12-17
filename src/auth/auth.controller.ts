@@ -4,7 +4,6 @@ import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CabinetsService } from '../cabinets/cabinets.service';
 
 @Controller('auth')
@@ -27,15 +26,19 @@ export class AuthController {
     const { access_token, user } = await this.authService.login(req.user);
 
     // Сохраняем JWT в httpOnly cookie
-    res.cookie('jwt', access_token, {
-      httpOnly: true,
-      secure: false,           // true если https
-      sameSite: 'lax' ,
-      path: '/',
-      maxAge: 1000 * 60 * 60, // 1 час
-    });
+    // res.cookie('jwt', access_token, {
+    //   httpOnly: true,
+    //   secure: false,           // true если https
+    //   sameSite: 'lax' ,
+    //   path: '/',
+    //   maxAge: 1000 * 60 * 60, // 1 час
+    // });
 
-    return { message: 'Logged in', user };
+    return { 
+      message: 'Logged in', 
+      access_token, // с куки удалить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      user 
+    };
   }
 
   @Post('send-verification-code')
