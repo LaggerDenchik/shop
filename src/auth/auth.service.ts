@@ -162,13 +162,10 @@ export class AuthService {
   }
 
   async validateLogin(login: string, password: string): Promise<User | null> {
-    const user = await this.usersRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.role', 'role')
-      .leftJoinAndSelect('role.permissions', 'rolePermissions')
-      .leftJoinAndSelect('user.permissions', 'userPermissions')
-      .where('user.email = :login OR user.phone = :login', { login })
-      .getOne();
+    const user = await this.usersRepository.findOne({
+      where: [{ email: login }, { phone: login }],
+      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt', 'roleId'],
+    });
 
     if (!user) return null;
 
@@ -176,62 +173,137 @@ export class AuthService {
     return isMatch ? user : null;
   }
 
-  async validateUserById(userId: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ['role', 'role.permissions', 'permissions'],
-    });
-    return user;
+  // async validateLogin(login: string, password: string): Promise<User | null> {
+  //   const user = await this.usersRepository
+  //     .createQueryBuilder('user')
+  //     .leftJoinAndSelect('user.role', 'role')
+  //     .leftJoinAndSelect('role.permissions', 'rolePermissions')
+  //     .leftJoinAndSelect('user.permissions', 'userPermissions')
+  //     .where('user.email = :login OR user.phone = :login', { login })
+  //     .getOne();
+
+  //   if (!user) return null;
+
+  //   const isMatch = await bcrypt.compare(password, user.password);
+  //   return isMatch ? user : null;
+  // }
+
+  async validateUserById(userId: string) {
+    return this.usersRepository.findOne({ where: { id: userId } });
   }
 
+  // async validateUserById(userId: string): Promise<User | null> {
+  //   const user = await this.usersRepository.findOne({
+  //     where: { id: userId },
+  //     relations: ['role', 'role.permissions', 'permissions'],
+  //   });
+  //   return user;
+  // }
+  
   async login(user: User) {
-    const role = user.roleId
-      ? await this.rolesRepository.findOne({
-          where: { id: user.roleId },
-          relations: ['permissions'],
-        })
-      : null;
-
-    const userWithPermissions = await this.usersRepository.findOne({
+    // Загружаем пользователя со связями role и permissions
+    const userWithRelations = await this.usersRepository.findOne({
       where: { id: user.id },
-      relations: ['role', 'role.permissions', 'permissions'],
+      relations: ['role', 'role.permissions', 'permissions'], // важно!
     });
+    
+    if (!userWithRelations) {
+      throw new NotFoundException('Пользователь не найден');
+    }
 
-    if (!userWithPermissions) throw new NotFoundException('Пользователь не найден');
-    if (!userWithPermissions.isEmailVerified) throw new ForbiddenException('Email не подтверждён');
+    if (!userWithRelations.isEmailVerified) {
+      throw new ForbiddenException('Email не подтверждён');
+    }
 
-    const userType = role?.name === 'org_admin' || role?.name === 'org_user'
-      ? 'organization'
-      : role?.name?.includes('admin')
-        ? 'admin'
-        : 'customer';
+    // Определяем тип пользователя (для маршрутизации фронта)
+    let userType = 'customer';
+    if (
+      userWithRelations.role?.name === 'org_admin' ||
+      userWithRelations.role?.name === 'org_user'
+    ) {
+      userType = 'organization';
+    } else if (userWithRelations.role?.name?.includes('admin')) {
+      userType = 'admin';
+    }
 
-    const rolePerms = role?.permissions?.map(p => p.tag) || [];
-    const userPerms = userWithPermissions.permissions?.map(p => p.tag) || [];
+    // Объединяем права из роли и персональные
+    const rolePerms = userWithRelations.role?.permissions?.map(p => p.tag) || [];
+    const userPerms = userWithRelations.permissions?.map(p => p.tag) || [];
+
+    // Убираем дубликаты
     const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
 
-    const payload: TokenPayload = {
-      sub: user.id,
-      email: user.email,
+    const payload = {
+      sub: userWithRelations.id,
+      email: userWithRelations.email,
       type: userType,
-      name: user.fullName,
+      name: userWithRelations.fullName,
     };
 
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        phone: user.phone,
-        roleId: role?.id || null,
-        roleName: role?.name || null,
+        id: userWithRelations.id,
+        email: userWithRelations.email,
+        fullName: userWithRelations.fullName,
+        phone: userWithRelations.phone,
+        roleId: userWithRelations.roleId,
+        roleName: userWithRelations.role?.name,
         permissions: mergedPermissions,
-        createdAt: user.createdAt,
+        createdAt: userWithRelations.createdAt,
         type: userType,
       },
     };
   }
+
+  // async login(user: User) {
+  //   const role = user.roleId
+  //     ? await this.rolesRepository.findOne({
+  //         where: { id: user.roleId },
+  //         relations: ['permissions'],
+  //       })
+  //     : null;
+
+  //   const userWithPermissions = await this.usersRepository.findOne({
+  //     where: { id: user.id },
+  //     relations: ['role', 'role.permissions', 'permissions'],
+  //   });
+
+  //   if (!userWithPermissions) throw new NotFoundException('Пользователь не найден');
+  //   if (!userWithPermissions.isEmailVerified) throw new ForbiddenException('Email не подтверждён');
+
+  //   const userType = role?.name === 'org_admin' || role?.name === 'org_user'
+  //     ? 'organization'
+  //     : role?.name?.includes('admin')
+  //       ? 'admin'
+  //       : 'customer';
+
+  //   const rolePerms = role?.permissions?.map(p => p.tag) || [];
+  //   const userPerms = userWithPermissions.permissions?.map(p => p.tag) || [];
+  //   const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
+
+  //   const payload: TokenPayload = {
+  //     sub: user.id,
+  //     email: user.email,
+  //     type: userType,
+  //     name: user.fullName,
+  //   };
+
+  //   return {
+  //     access_token: this.jwtService.sign(payload),
+  //     user: {
+  //       id: user.id,
+  //       email: user.email,
+  //       fullName: user.fullName,
+  //       phone: user.phone,
+  //       roleId: role?.id || null,
+  //       roleName: role?.name || null,
+  //       permissions: mergedPermissions,
+  //       createdAt: user.createdAt,
+  //       type: userType,
+  //     },
+  //   };
+  // }
 
   async validateOrCreateUser(profile: {
     email: string; 

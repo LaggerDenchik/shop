@@ -21,7 +21,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Request() req,
-    @Res({ passthrough: true }) res: Response
+    // @Res({ passthrough: true }) res: Response
   ) {
     const { access_token, user } = await this.authService.login(req.user);
 
@@ -34,11 +34,13 @@ export class AuthController {
     //   maxAge: 1000 * 60 * 60, // 1 час
     // });
 
-    return { 
-      message: 'Logged in', 
-      access_token, // с куки удалить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      user 
-    };
+    // return { 
+    //   message: 'Logged in', 
+    //   access_token, // с куки удалить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //   user 
+    // };
+
+    return this.authService.login(req.user);
   }
 
   @Post('send-verification-code')
@@ -63,42 +65,42 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     // Удаляем cookie
-    res.clearCookie('jwt', {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      path: '/',
-    });
+    // res.clearCookie('jwt', {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: 'lax',
+    //   path: '/',
+    // });
 
     return { message: 'Logged out' };
   }
 
   /** Silent check + создание guest, если нет пользователя */
-  @Get('me')
-  async getProfile(@Req() req) {
-    const user = req.user;
+  // @Get('me')
+  // async getProfile(@Req() req) {
+  //   const user = req.user;
 
-    if (!user) {
-      // Просто возвращаем "виртуального" гостя
-      return {
-        id: null,
-        fullName: 'Гость',
-        type: 'guest',
-        roleName: null,
-        permissions: [],
-        guest: true,
-      };
-    }
+  //   if (!user) {
+  //     // Просто возвращаем "виртуального" гостя
+  //     return {
+  //       id: null,
+  //       fullName: 'Гость',
+  //       type: 'guest',
+  //       roleName: null,
+  //       permissions: [],
+  //       guest: true,
+  //     };
+  //   }
 
-    return {
-      id: user.id,
-      fullName: user.fullName,
-      type: user.type,
-      roleName: user.role?.name || user.role?.tag,
-      permissions: user.permissions?.map(p => p.tag) || [],
-      guest: false,
-    };
-  }
+  //   return {
+  //     id: user.id,
+  //     fullName: user.fullName,
+  //     type: user.type,
+  //     roleName: user.role?.name || user.role?.tag,
+  //     permissions: user.permissions?.map(p => p.tag) || [],
+  //     guest: false,
+  //   };
+  // }
   
   // ============== endpoint'ы для гугла =================
 

@@ -41,8 +41,9 @@ export class User {
 
   @Column({ name: 'role_id', type: 'uuid', nullable: true })
   roleId?: string;
-
-  @ManyToOne(() => Role, (role) => role.users)
+  
+  @ManyToOne(() => Role, (role) => role.users, { eager: true })
+  // @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role?: Role;
 
@@ -53,7 +54,8 @@ export class User {
   @JoinColumn({ name: 'organization_id' })
   organization?: Organization;
 
-  @ManyToMany(() => Permission)
+  @ManyToMany(() => Permission, { eager: true })
+  // @ManyToMany(() => Permission)
   @JoinTable({
     name: 'user_permissions', 
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },

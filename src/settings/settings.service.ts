@@ -98,37 +98,49 @@ export class SettingsService {
   async getUserProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: [
-        'role',
-        'role.permissions',
-        'permissions',
-        'organization'
-      ]
+      select: ['id', 'email', 'fullName', 'avatar', 'phone', 'createdAt']
     });
 
     if (!user) {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      phone: user.phone,
-      avatar: user.avatar,
-      createdAt: user.createdAt,
-
-      type: user.type,
-      roleName: user.role?.name ?? null,
-
-      organizationId: user.organizationId ?? null,
-
-      permissions: [
-        ...(user.permissions?.map(p => p.tag) ?? []),
-        ...(user.role?.permissions?.map(p => p.tag) ?? [])
-      ]
-    };
+    return user;
   }
+  // async getUserProfile(userId: string) {
+  //   const user = await this.usersRepository.findOne({
+  //     where: { id: userId },
+  //     relations: [
+  //       'role',
+  //       'role.permissions',
+  //       'permissions',
+  //       'organization'
+  //     ]
+  //   });
+
+  //   if (!user) {
+  //     throw new NotFoundException('Пользователь не найден');
+  //   }
+
+  //   return {
+  //     id: user.id,
+  //     email: user.email,
+  //     fullName: user.fullName,
+  //     phone: user.phone,
+  //     avatar: user.avatar,
+  //     createdAt: user.createdAt,
+
+  //     type: user.type,
+  //     roleName: user.role?.name ?? null,
+
+  //     organizationId: user.organizationId ?? null,
+
+  //     permissions: [
+  //       ...(user.permissions?.map(p => p.tag) ?? []),
+  //       ...(user.role?.permissions?.map(p => p.tag) ?? [])
+  //     ]
+  //   };
+  // }
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const user = await this.usersRepository.findOne({ 
