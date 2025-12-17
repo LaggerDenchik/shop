@@ -5,8 +5,8 @@ import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class CatalogService {
-  private readonly API_HOST = 'https://api.start.e-portal.by';
-  data = { login: '', password: '' };
+  private readonly API_HOST = process.env.API_HOST_EP;
+  data = { login: process.env.P_LOGIN, password: process.env.P_PASSWORD };
   constructor(private readonly httpService: HttpService) { }
 
   private API_TOKEN = '';

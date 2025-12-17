@@ -28,4 +28,11 @@ export class ApiPlController {
 
     return filtered;
   }
+
+  @UseGuards(JwtAuthGuard)  
+  @Get('save-project')
+  async getSaveProject() {
+    const project = await this.apiPlService.saveProject('10.12.2025_19.55.dbs');
+    return { status: 'ok' };
+  }
 }
