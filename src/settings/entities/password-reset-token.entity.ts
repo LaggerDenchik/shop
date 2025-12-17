@@ -12,7 +12,7 @@ export class PasswordResetToken {
   @Column({ unique: true })
   token: string;
 
-  @Column()
+  @Column({name: 'expiresat'})
   expiresAt: Date;
 
   @Column({ default: false })
