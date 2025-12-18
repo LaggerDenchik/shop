@@ -9,6 +9,7 @@ import { EmailVerification } from './auth/entities/email-verification.entity';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 import { ApiPlModule } from 'planplace/apiPl.module';
 import { ContractModule } from 'contract/contract.module';
+import { OrdersModule } from 'orders/orders.module';
 
 @Module({
   imports: [
@@ -47,7 +48,8 @@ import { ContractModule } from 'contract/contract.module';
     ContractModule,
     SettingsModule,
     EmailVerification,
-    PhoneVerificationModule
+    PhoneVerificationModule,
+    OrdersModule
   ],
 })
 export class AppModule {}

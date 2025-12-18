@@ -270,4 +270,41 @@ export class CabinetsService {
 
     return users;
   }
+
+  async getAllOrganizations() {
+    const users = await this.usersRepository.find({
+      where: {
+        type: 'organization',
+        roleId: 'b305b4e2-f078-4a27-90fd-cb3322cf7d1e',
+      },
+      relations: ['organization'],
+      select: {
+        id: true,
+        email: true,
+        organization: {
+          id: true,
+          name: true,
+          shortname: true,
+        },
+      },
+      order: {
+        organization: {
+          name: 'ASC',
+        },
+      },
+    });
+
+    return users
+      .filter(
+        (u): u is User & { organization: Organization } =>
+          !!u.organization
+      )
+      .map(u => ({
+        userId: u.id,
+        email: u.email,
+        organizationId: u.organization.id,
+        organizationName: u.organization.name,
+        organizationShortName: u.organization.shortname,
+      }));
+  }
 }

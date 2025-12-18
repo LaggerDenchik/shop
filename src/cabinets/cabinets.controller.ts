@@ -96,9 +96,15 @@ export class CabinetsController {
     return this.cabinetsService.getAllPhysicalPersons();
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('dilers')
+  async getAllOrganizations() {
+    return this.cabinetsService.getAllOrganizations();
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   getUserById(@Param('id') id: string) {
     return this.cabinetsService.findUserById(id);
   }
-
 }
