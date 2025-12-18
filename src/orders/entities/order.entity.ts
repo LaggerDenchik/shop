@@ -14,6 +14,9 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ name: 'external_id', unique: true })
+  externalId: string;
+
   /* Владелец заказа (клиент) */
   @Column({ name: 'customer_id', type: 'uuid' })
   customerId: string;

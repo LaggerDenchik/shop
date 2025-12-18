@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { Organization } from '../auth/entities/organization.entity';
 import { ApiPlService } from 'planplace/apiPl.service';
+import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class OrdersService {
@@ -13,6 +14,9 @@ export class OrdersService {
 
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
 
     private apiPlService: ApiPlService
   ) {}
@@ -33,8 +37,13 @@ export class OrdersService {
     });
   }
 
-  async assignDealer(orderId: string, dealerOrgId: string, userId: string) {
-    const order = await this.ordersRepo.findOne({ where: { id: Number(orderId) } });
+  async assignDealer(orderIdOrExternalId: string, dealerOrgId: string, userId: string) {
+    const order = await this.ordersRepo.findOne({
+        where: [
+        { externalId: orderIdOrExternalId }
+        ]
+    });
+
     if (!order) throw new NotFoundException('Заказ не найден');
     if (order.customerId !== userId) throw new ForbiddenException('Нет доступа');
 
@@ -48,19 +57,36 @@ export class OrdersService {
   }
 
   async syncAllOrdersFromPlanPlace() {
-    // получаем все заказы с PlanPlace
+    // Получаем все заказы из PlanPlace
     const ordersFromPP = await this.apiPlService.getData('api/get_items/orders');
 
-    // преобразуем в локальные сущности
-    const localOrders = ordersFromPP.map(o => {
-      const order = new Order();
-      order.customerId = o.customerId || null; 
-      order.name = o.name;
-      order.status = o.status || 'new';
-      return order;
-    });
+    const users = await this.userRepo.find();
+    const emailToUserId = new Map(users.map(u => [u.email.toLowerCase(), u.id]));
 
-    // сохраняем все новые или обновленные заказы
-    return this.ordersRepo.save(localOrders);
+    for (const o of ordersFromPP) {
+        const customerId = emailToUserId.get(o.email.toLowerCase());
+
+        if (!customerId) {
+            console.warn(`Не найден пользователь для email: ${o.email}`);
+            continue;
+        }
+
+        let order = await this.ordersRepo.findOne({ where: { externalId: o.id } });
+
+        if (!order) {
+            order = new Order();
+            order.externalId = o.id;
+            order.customerId = customerId;
+            order.name = o.name || `Заказ ${o.id}`;
+            order.status = 'new';
+            order.dealerOrgId = null;
+            await this.ordersRepo.save(order);
+        } else {
+            order.status = 'new';
+            order.name = o.name || order.name;
+            await this.ordersRepo.save(order);
+        }
+    }
+    return { message: 'Синхронизация завершена' };
   }
 }
