@@ -17,6 +17,27 @@ export class Order {
   @Column({ name: 'external_id', unique: true })
   externalId: string;
 
+  @Column({ name: 'planplace_date', type: 'timestamp', nullable: true })
+  planplaceDate: Date;
+
+  @Column({ name: 'total_price', type: 'decimal', nullable: true })
+  totalPrice: number;
+
+  @Column({ name: 'order_number', nullable: true })
+  orderNumber: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
+  @Column({ nullable: true })
+  comments: string;
+
+  @Column({ name: 'project_file', nullable: true })
+  projectFile: string;
+
   /* Владелец заказа (клиент) */
   @Column({ name: 'customer_id', type: 'uuid' })
   customerId: string;

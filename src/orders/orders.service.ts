@@ -21,33 +21,59 @@ export class OrdersService {
     private apiPlService: ApiPlService
   ) {}
 
-  async getOrdersByCustomer(customerId: string) {
+  async getOrdersByDealer(dealerOrgId: string) {
     return this.ordersRepo.find({
-      where: { customerId },
-      relations: ['dealerOrganization'],
+      where: { dealerOrgId },
+      relations: ['organization'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async getOrdersByDealer(dealerOrgId: string) {
+  async getOrdersByCustomer(customerId: string) {
     return this.ordersRepo.find({
-      where: { dealerOrgId },
+      where: { customerId },
       relations: ['customer'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async assignDealer(orderIdOrExternalId: string, dealerOrgId: string, userId: string) {
+  async getByExternalId(externalId: string, user: any) {
     const order = await this.ordersRepo.findOne({
-        where: [
-        { externalId: orderIdOrExternalId }
-        ]
+      where: { externalId },
+      relations: ['dealerOrganization', 'customer'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Заказ не найден');
+    }
+
+    // доступ:
+    // клиент — только свои
+    if (!user.organizationId && order.customerId !== user.id) {
+      throw new ForbiddenException('Нет доступа');
+    }
+
+    // дилер — только назначенные ему
+    if (user.organizationId && order.dealerOrgId !== user.organizationId) {
+      throw new ForbiddenException('Нет доступа');
+    }
+
+    return order;
+  }
+
+  async assignDealer(externalId: string, dealerOrgId: string, userId: string) {
+    const order = await this.ordersRepo.findOne({
+      where: { externalId },
     });
 
     if (!order) throw new NotFoundException('Заказ не найден');
-    if (order.customerId !== userId) throw new ForbiddenException('Нет доступа');
+    if (order.customerId !== userId) {
+      throw new ForbiddenException('Нет доступа');
+    }
 
-    const dealer = await this.orgRepo.findOne({ where: { id: dealerOrgId } });
+    const dealer = await this.orgRepo.findOne({
+      where: { id: dealerOrgId },
+    });
     if (!dealer) throw new NotFoundException('Дилер не найден');
 
     order.dealerOrgId = dealerOrgId;
@@ -57,36 +83,74 @@ export class OrdersService {
   }
 
   async syncAllOrdersFromPlanPlace() {
-    // Получаем все заказы из PlanPlace
     const ordersFromPP = await this.apiPlService.getData('api/get_items/orders');
 
-    const users = await this.userRepo.find();
-    const emailToUserId = new Map(users.map(u => [u.email.toLowerCase(), u.id]));
+    const users = await this.userRepo.find({ select: ['id', 'email'] });
+    const emailToUserId = new Map(users.filter(u => u.email).map(u => [u.email.toLowerCase(), u.id]));
+
+    const existingOrders = await this.ordersRepo.find();
+    const externalIdToOrder = new Map(existingOrders.map(o => [o.externalId, o]));
+
+    const syncedOrders: Order[] = [];
 
     for (const o of ordersFromPP) {
-        const customerId = emailToUserId.get(o.email.toLowerCase());
+      if (!o?.id || !o?.email) continue;
 
-        if (!customerId) {
-            console.warn(`Не найден пользователь для email: ${o.email}`);
-            continue;
-        }
+      const customerId = emailToUserId.get(o.email.toLowerCase());
+      if (!customerId) {
+        console.warn(`Пользователь не найден для email: ${o.email}`);
+        continue;
+      }
 
-        let order = await this.ordersRepo.findOne({ where: { externalId: o.id } });
+      let order = externalIdToOrder.get(o.id.toString());
+      if (!order) {
+        order = this.ordersRepo.create({
+          externalId: o.id.toString(),
+          customerId,
+          status: 'new'
+        });
+      }
 
-        if (!order) {
-            order = new Order();
-            order.externalId = o.id;
-            order.customerId = customerId;
-            order.name = o.name || `Заказ ${o.id}`;
-            order.status = 'new';
-            order.dealerOrgId = null;
-            await this.ordersRepo.save(order);
-        } else {
-            order.status = 'new';
-            order.name = o.name || order.name;
-            await this.ordersRepo.save(order);
-        }
+      order.customerId = customerId;
+      order.name = o.name || order.name;
+      order.email = o.email;
+      order.phone = o.phone;
+      order.comments = o.comments;
+      order.projectFile = o.project_file;
+      order.orderNumber = o.number;
+      order.planplaceDate = this.parsePlanplaceDate(o.date) || new Date();
+      order.totalPrice = this.normalizePrice(o.price);
+
+      syncedOrders.push(order);
+      console.log(order)
     }
-    return { message: 'Синхронизация завершена' };
+
+    const savedOrders = await this.ordersRepo.save(syncedOrders);
+
+    return {
+      message: `Синхронизировано заказов: ${savedOrders.length}`,
+      orders: savedOrders
+    };
+  }
+
+  private parsePlanplaceDate(dateStr?: string): Date | null {
+    if (!dateStr) return new Date(0);
+
+    const [datePart, timePart] = dateStr.split(' - ');
+    if (!datePart || !timePart) return new Date();
+
+    const [day, month, year] = datePart.split('.').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+
+    return new Date(year, month - 1, day, hours, minutes);
+  }
+
+  private normalizePrice(price?: string): number {
+    if (!price) return 0;
+    return Number(price
+      .replace(/\s/g, '')
+      .replace('€', '')
+      .replace(',', '.')
+    );
   }
 }

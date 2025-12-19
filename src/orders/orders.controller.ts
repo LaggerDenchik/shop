@@ -25,6 +25,15 @@ export class OrdersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get(':externalId')
+  getOrderByExternalId(
+    @Param('externalId') externalId: string,
+    @Req() req
+  ) {
+    return this.ordersService.getByExternalId(externalId, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/dealer')
   assignDealer(
     @Param('id') orderId: string,
