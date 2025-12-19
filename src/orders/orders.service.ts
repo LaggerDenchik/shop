@@ -22,9 +22,10 @@ export class OrdersService {
   ) {}
 
   async getOrdersByDealer(dealerOrgId: string) {
+    console.log('Dealer Org ID:', dealerOrgId);
     return this.ordersRepo.find({
       where: { dealerOrgId },
-      relations: ['organization'],
+      relations: ['dealerOrganization'],
       order: { createdAt: 'DESC' },
     });
   }
