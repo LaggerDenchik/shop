@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query, Param } from '@nestjs/common';
 import { ApiPlService } from './apiPl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -15,7 +15,7 @@ export class ApiPlController {
   getDataFacade() { //@Query('query') query: string
     return this.apiPlService.getData("api/get_items/facades");
   }
-  @UseGuards(JwtAuthGuard)  
+  @UseGuards(JwtAuthGuard)
   @Get('orders')
   async getDataOrders(@Req() req) {
     const user = req.user;
@@ -29,10 +29,21 @@ export class ApiPlController {
     return filtered;
   }
 
-  @UseGuards(JwtAuthGuard)  
+  @UseGuards(JwtAuthGuard)
   @Get('save-project')
-  async getSaveProject() {
-    const project = await this.apiPlService.saveProject('10.12.2025_19.55.dbs');
+  async getSaveProject(@Query('query') query: string) {
+    const project = await this.apiPlService.saveProject(query);
     return { status: 'ok' };
   }
+
+  @Get('project/:filename')
+  async getProject(@Param('filename') filename: string) {
+    const buffer = await this.apiPlService.saveProject(filename);
+
+    return {
+      filename: filename.replace('.dbs', '.zip'),
+      file: buffer.toString('base64'),
+    };
+  }
+
 }

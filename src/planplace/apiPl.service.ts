@@ -1,9 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import axios from 'axios';
 
 @Injectable()
@@ -43,34 +40,43 @@ export class ApiPlService {
         }
     }
 
-    async saveProject(filename: string) {
+    async saveProject(filename: string): Promise<Buffer> {
+
         const API_HOST = process.env.API_HOST_SAVE_PROJECT;
         const url = `${API_HOST}/clients_orders/${filename}`;
 
-
         const response = await axios.get(url, {
-            responseType: 'stream',
+            responseType: 'json',
         });
 
-        const homeDir = os.homedir();
-        const filePath = path.join(
-            homeDir,
-            'Downloads',
-            filename.replace(".dbs", ".json"),
-        ); //.replace(".dbs", ".json")
-        
-        const writer = fs.createWriteStream(filePath);
-        console.log('DOWNLOAD URL:', url);
-        console.log('Saving file to:', filePath);
+        const jsonString = JSON.stringify(response.data);
 
-        response.data.pipe(writer);
+        const archiver = require('archiver');
+        const { PassThrough } = require('stream');
 
-        
-        return new Promise<void>((resolve, reject) => {
-            writer.on('finish', () => resolve());
-            writer.on('error', (err) => reject(err));
-        });
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        const stream = new PassThrough();
 
+        archive.pipe(stream);
+        archive.append(jsonString, { name: filename });
+        /*
+        archive.append(jsonString, {
+            name: filename.replace('.dbs', '.dbx'),
+        }); */
+
+        archive.append(
+            jsonString,
+            { name: filename.replace('.dbs', '.json') }
+        );
+
+        await archive.finalize();
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+            chunks.push(chunk);
+        }
+
+        return Buffer.concat(chunks);
 
     }
 }

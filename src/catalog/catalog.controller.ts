@@ -1,7 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
-// https://api.montegroup.e-portal.by/api/catalog/product/query?$filter=cast(subKindId,%27Edm.Guid%27)%20eq%205e7e4af9-6bfe-ef11-aaa7-000d3ac24097&$skip=0&$top=30&$orderby=name&$count=true
-// https://api.montegroup.e-portal.by/api/catalog/subKind?&$skip=0&$top=20&$count=true
+
 @Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) { }
@@ -18,7 +17,8 @@ export class CatalogController {
   @Get('lookup')
   getDataKind(@Query('query') query: string) {
     // const decodedQuery = decodeURIComponent(query);
-    return this.catalogService.getDataLookup(`${query}`);
+    console.log(query)
+    return this.catalogService.getDataLookup(query);
   }
 
 

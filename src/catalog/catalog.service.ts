@@ -31,7 +31,7 @@ export class CatalogService {
         }),
       );
 
-      // console.log('Ответ:', response.data.access_token);
+      console.log('Запрос:', url);
       const token = response.data.access_token || response.data.token;
       this.API_TOKEN = token;
 
@@ -77,14 +77,10 @@ export class CatalogService {
   }
 
   async getData(query): Promise<any> {
-    const token = await this.getToken();
-    console.log(`${this.API_HOST}/api/catalog/${query}`);
     try {
       if (this.API_TOKEN == '') this.getToken();
       const url = `${this.API_HOST}/api/catalog/${query}`;
-      // const url = `${this.API_HOST}/api/catalog/product/query?${query}`;
-      //console.log(`${this.API_HOST}/api/catalog/${query}`);
-
+console.log(url);
       // Используем POST
       const response = await firstValueFrom(
         this.httpService.post(
@@ -117,13 +113,10 @@ export class CatalogService {
   }
 
   async getDataLookup(query): Promise<any> {
-    const token = await this.getToken();
-
     try {
       if (this.API_TOKEN == '') this.getToken();
       const url = `${this.API_HOST}/api/catalog/${query}`;
-      // const url = `${this.API_HOST}/api/catalog/product/query?${query}`;
-      // console.log(`${this.API_HOST}/api/catalog/${query}`);
+      console.log(url);
 
       const response = await firstValueFrom(
         this.httpService.get(url, {
