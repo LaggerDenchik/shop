@@ -21,13 +21,17 @@ export class OrdersService {
     private apiPlService: ApiPlService
   ) {}
 
-  async getOrdersByDealer(dealerOrgId: string) {
-    console.log('Dealer Org ID:', dealerOrgId);
-    return this.ordersRepo.find({
-      where: { dealerOrgId },
-      relations: ['dealerOrganization'],
-      order: { createdAt: 'DESC' },
-    });
+  async getOrdersByDealer(dealerOrgId: string, dealerEmail: string) {
+    return this.ordersRepo
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.dealerOrganization', 'dealerOrganization')
+      .where('order.dealer_org_id = :dealerOrgId', { dealerOrgId })
+      .orWhere(
+        'order.email = :dealerEmail AND order.dealer_org_id IS NULL',
+        { dealerEmail }
+      )
+      .orderBy('order.createdAt', 'DESC')
+      .getMany();
   }
 
   async getOrdersByCustomer(customerId: string) {
@@ -48,14 +52,20 @@ export class OrdersService {
       throw new NotFoundException('Заказ не найден');
     }
 
-    // доступ:
-    // клиент — только свои
-    if (!user.organizationId && order.customerId !== user.id) {
-      throw new ForbiddenException('Нет доступа');
+    // Клиент — только свои заказы
+    if (!user.organizationId) {
+      if (order.customerId !== user.id) {
+        throw new ForbiddenException('Нет доступа');
+      }
+      return order;
     }
 
-    // дилер — только назначенные ему
-    if (user.organizationId && order.dealerOrgId !== user.organizationId) {
+    // Дилер — назначенные ИЛИ свои по email
+    const hasDealerAccess =
+      order.dealerOrgId === user.organizationId ||
+      order.email === user.email;
+
+    if (!hasDealerAccess) {
       throw new ForbiddenException('Нет доступа');
     }
 

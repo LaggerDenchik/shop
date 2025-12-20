@@ -21,7 +21,7 @@ export class OrdersController {
   @Get('dealer')
   getDealerOrders(@Req() req) {
     if (!req.user.organizationId) throw new ForbiddenException('Нет организации');
-    return this.ordersService.getOrdersByDealer(req.user.organizationId);
+    return this.ordersService.getOrdersByDealer(req.user.organizationId, req.user.email);
   }
 
   @UseGuards(JwtAuthGuard)
