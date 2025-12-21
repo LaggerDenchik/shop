@@ -16,9 +16,9 @@ export class ContractsController {
     return this.contractsService.create(dto);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.contractsService.findOne(id);
+  @Get(':id/template')
+  getTemplate(@Param('id') id: string) {
+    return this.contractsService.getTemplate(id);
   }
 
   @Put(':id/buyer')
@@ -32,8 +32,11 @@ export class ContractsController {
   }
 
   @Get(':id/pdf')
-  generatePdf(@Param('id') id: string) {
-    return this.contractsService.generatePdf(id);
+  generatePdf(
+    @Param('id') id: string,
+    @Body() body: { html: string }
+  ) {
+    return this.contractsService.generatePdfFromHtml(id, body.html);
   }
 
   @Post(':id/sign/buyer')
@@ -56,5 +59,10 @@ export class ContractsController {
   }))
   signOrg(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
     return this.contractsService.signOrg(id, file.path);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.contractsService.findOne(id);
   }
 }

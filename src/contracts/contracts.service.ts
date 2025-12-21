@@ -38,6 +38,37 @@ export class ContractsService {
     return this.repo.save(contract);
   }
 
+  async generatePdfFromHtml(id: string, html: string) {
+    const contract = await this.findOne(id);
+
+    const pdfDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(pdfDir)) {
+        fs.mkdirSync(pdfDir, { recursive: true });
+    }
+
+    const pdfPath = path.join(pdfDir, `contract-${id}.pdf`);
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.pdf({
+        path: pdfPath,
+        format: 'A4',
+        printBackground: true,
+    });
+
+    await browser.close();
+
+    contract.pdfFile = pdfPath;
+    await this.repo.save(contract);
+
+    return { pdfPath };
+  }
+
   async generatePdf(id: string): Promise<string> {
     const contract = await this.findOne(id);
 
@@ -112,5 +143,61 @@ export class ContractsService {
     contract.signedOrgFile = filePath;
     contract.status = 'completed';
     return this.repo.save(contract);
+  }
+
+  async getTemplate(orderId: string) {
+    let contract = await this.repo.findOne({
+        where: { orderId },
+    });
+
+    if (!contract) {
+        contract = this.repo.create({
+        orderId,
+        status: 'draft',
+        });
+        await this.repo.save(contract);
+    }
+
+    const templatePath = path.join(
+        __dirname,
+        'templates',
+        'contract-template.html',
+    );
+
+    const templateHtml = fs.readFileSync(templatePath, 'utf-8');
+
+    return {
+        contractId: contract.id, // UUID
+        template: templateHtml,
+        data: {
+        buyer: {
+            fullName: contract.buyerFullName,
+            passportSeries: contract.buyerPassportSeries,
+            passportNumber: contract.buyerPassportNumber,
+            issuedBy: contract.buyerPassportIssuedBy,
+            issueDate: contract.buyerPassportIssueDate,
+            address: contract.buyerAddress,
+            city: contract.buyerCity,
+            index: contract.buyerIndex,
+            phone: contract.buyerPhone,
+        },
+        org: {
+            name: contract.orgName,
+            legalForm: contract.orgLegalForm,
+            unp: contract.orgUNP,
+            director: contract.orgDirector,
+            address: contract.orgAddress,
+            city: contract.orgCity,
+            index: contract.orgIndex,
+            phone: contract.orgPhone,
+        },
+        meta: {
+            number: contract.contractNumber,
+            price: contract.price,
+            prepayment: contract.prepayment,
+            remainder: contract.remainder,
+        },
+        },
+    };
   }
 }

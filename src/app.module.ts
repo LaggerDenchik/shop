@@ -8,7 +8,7 @@ import { SettingsModule } from './settings/settings.module';
 import { EmailVerification } from './auth/entities/email-verification.entity';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 import { ApiPlModule } from 'planplace/apiPl.module';
-import { ContractModule } from 'contract/contract.module';
+import { ContractsModule } from 'contracts/contracts.module';
 import { OrdersModule } from 'orders/orders.module';
 
 @Module({
@@ -45,7 +45,7 @@ import { OrdersModule } from 'orders/orders.module';
     CabinetsModule,
     CatalogModule,
     ApiPlModule,
-    ContractModule,
+    ContractsModule,
     SettingsModule,
     EmailVerification,
     PhoneVerificationModule,

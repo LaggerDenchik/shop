@@ -13,88 +13,88 @@ export class Contract {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'draft' })
+  @Column({ name: 'order_id', type: 'integer', unique: true })
+  orderId: string;
+
+  @Column({ name: 'status', type: 'varchar', length: 50, default: 'draft' })
   status: ContractStatus;
 
-  // Buyer
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'buyer_full_name', type: 'varchar', length: 255, nullable: true })
   buyerFullName?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'buyer_passport_series', type: 'varchar', length: 50, nullable: true })
   buyerPassportSeries?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'buyer_passport_number', type: 'varchar', length: 50, nullable: true })
   buyerPassportNumber?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'buyer_passport_issued_by', type: 'varchar', length: 255, nullable: true })
   buyerPassportIssuedBy?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ name: 'buyer_passport_issue_date', type: 'date', nullable: true })
   buyerPassportIssueDate?: Date;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'buyer_address', type: 'varchar', length: 255, nullable: true })
   buyerAddress?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'buyer_city', type: 'varchar', length: 100, nullable: true })
   buyerCity?: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ name: 'buyer_index', type: 'varchar', length: 20, nullable: true })
   buyerIndex?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'buyer_phone', type: 'varchar', length: 50, nullable: true })
   buyerPhone?: string;
 
-  // Organization
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'org_legal_form', type: 'varchar', length: 100, nullable: true })
   orgLegalForm?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'org_name', type: 'varchar', length: 255, nullable: true })
   orgName?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'org_unp', type: 'varchar', length: 50, nullable: true })
   orgUNP?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'org_director', type: 'varchar', length: 255, nullable: true })
   orgDirector?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'org_address', type: 'varchar', length: 255, nullable: true })
   orgAddress?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'org_city', type: 'varchar', length: 100, nullable: true })
   orgCity?: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ name: 'org_index', type: 'varchar', length: 20, nullable: true })
   orgIndex?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'org_phone', type: 'varchar', length: 50, nullable: true })
   orgPhone?: string;
 
-  // Contract data
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'contract_number', type: 'varchar', length: 50, nullable: true })
   contractNumber?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ name: 'contract_date', type: 'date', nullable: true })
   contractDate?: Date;
 
-  @Column({ type: 'numeric', nullable: true })
+  @Column({ name: 'price', type: 'numeric', nullable: true })
   price?: number;
 
-  @Column({ type: 'numeric', nullable: true })
+  @Column({ name: 'prepayment', type: 'numeric', nullable: true })
   prepayment?: number;
 
-  @Column({ type: 'numeric', nullable: true })
+  @Column({ name: 'remainder', type: 'numeric', nullable: true })
   remainder?: number;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'specification_number', type: 'varchar', length: 50, nullable: true })
   specificationNumber?: string;
 
   // PDF and signed files
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'pdf_file', type: 'varchar', length: 255, nullable: true })
   pdfFile?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'signed_buyer_file', type: 'varchar', length: 255, nullable: true })
   signedBuyerFile?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'signed_org_file', type: 'varchar', length: 255, nullable: true })
   signedOrgFile?: string;
 }
