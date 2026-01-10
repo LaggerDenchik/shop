@@ -27,14 +27,14 @@ export class ContractsService {
   async updateBuyer(id: string, dto: UpdateBuyerDto) {
     const contract = await this.findOne(id);
     Object.assign(contract, dto);
-    contract.status = 'waitingOrg';
+    contract.status = 'buyer_confirmed';
     return this.repo.save(contract);
   }
 
   async updateOrg(id: string, dto: UpdateOrgDto) {
     const contract = await this.findOne(id);
     Object.assign(contract, dto);
-    contract.status = 'waitingBuyer';
+    contract.status = 'org_confirmed';
     return this.repo.save(contract);
   }
 
@@ -134,7 +134,7 @@ export class ContractsService {
   async signBuyer(id: string, filePath: string) {
     const contract = await this.findOne(id);
     contract.signedBuyerFile = filePath;
-    contract.status = 'signedBuyer';
+    contract.status = 'signed';
     return this.repo.save(contract);
   }
 
@@ -169,6 +169,7 @@ export class ContractsService {
     return {
         contractId: contract.id, // UUID
         template: templateHtml,
+        status: contract.status,
         data: {
         buyer: {
             fullName: contract.buyerFullName,

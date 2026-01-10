@@ -1,13 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 export type ContractStatus = 
-  'draft' |
-  'waitingOrg' |
-  'waitingBuyer' |
-  'signedBuyer' |
-  'signedOrg' |
-  'completed';
-
+  | 'draft'                 // заполнение
+  | 'buyer_confirmed'       // физик подтвердил
+  | 'org_confirmed'         // юрик подтвердил
+  | 'ready_for_sign'        // оба подтвердили
+  | 'signed_by_org'         // юрик загрузил подписанный
+  | 'signed'                // физик загрузил подписанный
+  | 'completed';               
 @Entity('contracts')
 export class Contract {
   @PrimaryGeneratedColumn('uuid')
