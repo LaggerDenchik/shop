@@ -164,4 +164,23 @@ export class OrdersService {
       .replace(',', '.')
     );
   }
+
+  async markOrderAsViewedIfNew(
+    externalId: string,
+    user: any
+  ): Promise<{ updated: boolean }> {
+
+    const order = await this.ordersRepo.findOne({
+      where: { externalId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Заказ не найден');
+    }
+
+    order.status = 'viewed';
+    await this.ordersRepo.save(order);
+
+    return { updated: true };
+  }
 }

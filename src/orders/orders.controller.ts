@@ -34,6 +34,18 @@ export class OrdersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':externalId/viewed')
+  markAsViewed(
+    @Param('externalId') externalId: string,
+    @Req() req
+  ) {
+    return this.ordersService.markOrderAsViewedIfNew(
+      externalId,
+      req.user
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/dealer')
   assignDealer(
     @Param('id') orderId: string,
