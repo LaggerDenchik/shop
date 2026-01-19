@@ -8,6 +8,7 @@ import { UpdateOrgDto } from './dto/update-org.dto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
+import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
 
 @Injectable()
 export class ContractsService {
@@ -31,10 +32,24 @@ export class ContractsService {
     return this.repo.save(contract);
   }
 
-  async updateOrg(id: string, dto: UpdateOrgDto) {
+  async updateOrg(id: string, dto: UpdateOrgContractDto) {
+    console.log("DTO: ", dto)
     const contract = await this.findOne(id);
-    Object.assign(contract, dto);
+
+    if (!contract) {
+      throw new NotFoundException('Contract not found');
+    }
+
+    contract.contractNumber = dto.contractNumber;
+    contract.prepayment = dto.prepayment;
+
+    // посчитать остаток
+    if (contract.price && dto.prepayment !== undefined) {
+      contract.remainder = contract.price - dto.prepayment;
+    }
+
     contract.status = 'org_confirmed';
+
     return this.repo.save(contract);
   }
 

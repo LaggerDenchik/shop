@@ -6,6 +6,7 @@ import { UpdateOrgDto } from './dto/update-org.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
+import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
 
 @Controller('contracts')
 export class ContractsController {
@@ -27,7 +28,7 @@ export class ContractsController {
   }
 
   @Put(':id/org')
-  updateOrg(@Param('id') id: string, @Body() dto: UpdateOrgDto) {
+  updateOrg(@Param('id') id: string, @Body() dto: UpdateOrgContractDto) {
     return this.contractsService.updateOrg(id, dto);
   }
 
