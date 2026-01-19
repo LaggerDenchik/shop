@@ -27,8 +27,21 @@ export class ContractsService {
 
   async updateBuyer(id: string, dto: UpdateBuyerDto) {
     const contract = await this.findOne(id);
-    Object.assign(contract, dto);
+
+    contract.buyerFullName = dto.buyerFullName;
+    contract.buyerPassportSeries = dto.buyerPassportSeries;
+    contract.buyerPassportNumber = dto.buyerPassportNumber;
+    contract.buyerPassportIssuedBy = dto.buyerPassportIssuedBy;
+    contract.buyerPassportIssueDate = dto.buyerPassportIssueDate
+      ? new Date(dto.buyerPassportIssueDate)
+      : undefined;
+    contract.buyerAddress = dto.buyerAddress;
+    contract.buyerCity = dto.buyerCity;
+    contract.buyerIndex = dto.buyerIndex;
+    contract.buyerPhone = dto.buyerPhone;
+
     contract.status = 'buyer_confirmed';
+
     return this.repo.save(contract);
   }
 
