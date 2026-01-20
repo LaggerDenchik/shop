@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Contract } from './entities/contract.entity';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateBuyerDto } from './dto/update-buyer.dto';
-import { UpdateOrgDto } from './dto/update-org.dto';
+import { Order } from '../orders/entities/order.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
@@ -12,7 +12,13 @@ import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
 
 @Injectable()
 export class ContractsService {
-  constructor(@InjectRepository(Contract) private repo: Repository<Contract>) {}
+  constructor(
+    @InjectRepository(Contract) 
+    private repo: Repository<Contract>,
+  
+    @InjectRepository(Order) 
+    private readonly orderRepo: Repository<Order>
+  ) {}
 
   async create(dto: CreateContractDto) {
     const contract = this.repo.create(dto);
@@ -53,15 +59,24 @@ export class ContractsService {
       throw new NotFoundException('Contract not found');
     }
 
-    contract.contractNumber = dto.contractNumber;
-    contract.prepayment = dto.prepayment;
-
-    // посчитать остаток
-    if (contract.price && dto.prepayment !== undefined) {
-      contract.remainder = contract.price - dto.prepayment;
+    if (dto.contractNumber !== undefined) {
+      contract.contractNumber = dto.contractNumber;
+    }
+    if (dto.prepayment !== undefined) {
+      contract.prepayment = dto.prepayment;
+    }
+    if (dto.price !== undefined) {
+      contract.price = dto.price;
     }
 
-    contract.status = 'org_confirmed';
+    // пересчёт остатка
+    if (contract.price !== undefined && contract.prepayment !== undefined) {
+      contract.remainder = contract.price - contract.prepayment;
+    }
+    
+    if (dto.contractDate !== undefined) {
+      contract.contractDate = new Date(dto.contractDate);
+    }
 
     return this.repo.save(contract);
   }
@@ -173,60 +188,84 @@ export class ContractsService {
     return this.repo.save(contract);
   }
 
-  async getTemplate(orderId: string) {
+  async getTemplate(externalOrderId: string) {
+    const order = await this.orderRepo.findOne({
+      where: { externalId: externalOrderId },
+      relations: ['dealerOrganization'],
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const org = order.dealerOrganization
+      ? {
+          name: order.dealerOrganization.name || '',
+          legalForm: order.dealerOrganization.shortname || 'ООО',
+          unp: order.dealerOrganization.unp || '',
+          director: order.dealerOrganization.ceo || '',
+          address: order.dealerOrganization.address || '',
+          city: '', 
+          index: '',
+          phone: order.dealerOrganization.phone || '',
+        }
+      : {
+          name: '',
+          legalForm: '',
+          unp: '',
+          director: '',
+          address: '',
+          city: '',
+          index: '',
+          phone: '',
+        };
+
     let contract = await this.repo.findOne({
-        where: { orderId },
+      where: { orderId: order.externalId }, 
     });
 
     if (!contract) {
-        contract = this.repo.create({
-        orderId,
+      contract = this.repo.create({
+        orderId: order.externalId, 
         status: 'draft',
-        });
-        await this.repo.save(contract);
+        orgName: org.name,
+        orgLegalForm: org.legalForm,
+        orgUNP: org.unp,
+        orgDirector: org.director,
+        orgAddress: org.address,
+        orgCity: org.city,
+        orgIndex: org.index,
+        orgPhone: org.phone,
+      });
+
+      await this.repo.save(contract);
     }
 
-    const templatePath = path.join(
-        __dirname,
-        'templates',
-        'contract-template.html',
-    );
-
+    const templatePath = path.join(__dirname, 'templates', 'contract-template.html');
     const templateHtml = fs.readFileSync(templatePath, 'utf-8');
 
     return {
-        contractId: contract.id, // UUID
-        template: templateHtml,
-        status: contract.status,
-        data: {
+      contractId: contract.id,
+      template: templateHtml,
+      status: contract.status,
+      data: {
         buyer: {
-            fullName: contract.buyerFullName,
-            passportSeries: contract.buyerPassportSeries,
-            passportNumber: contract.buyerPassportNumber,
-            issuedBy: contract.buyerPassportIssuedBy,
-            issueDate: contract.buyerPassportIssueDate,
-            address: contract.buyerAddress,
-            city: contract.buyerCity,
-            index: contract.buyerIndex,
-            phone: contract.buyerPhone,
+          fullName: contract.buyerFullName,
+          passportSeries: contract.buyerPassportSeries,
+          passportNumber: contract.buyerPassportNumber,
+          issuedBy: contract.buyerPassportIssuedBy,
+          issueDate: contract.buyerPassportIssueDate,
+          address: contract.buyerAddress,
+          city: contract.buyerCity,
+          index: contract.buyerIndex,
+          phone: contract.buyerPhone,
         },
-        org: {
-            name: contract.orgName,
-            legalForm: contract.orgLegalForm,
-            unp: contract.orgUNP,
-            director: contract.orgDirector,
-            address: contract.orgAddress,
-            city: contract.orgCity,
-            index: contract.orgIndex,
-            phone: contract.orgPhone,
-        },
+        org,
         meta: {
-            number: contract.contractNumber,
-            price: contract.price,
-            prepayment: contract.prepayment,
-            remainder: contract.remainder,
+          number: contract.contractNumber,
+          price: contract.price,
+          prepayment: contract.prepayment,
+          remainder: contract.remainder,
         },
-        },
+      },
     };
   }
 }

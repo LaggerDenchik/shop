@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, UploadedFile, UseInterceptors, Req } from '@nestjs/common';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateBuyerDto } from './dto/update-buyer.dto';
@@ -18,7 +18,7 @@ export class ContractsController {
   }
 
   @Get(':id/template')
-  getTemplate(@Param('id') id: string) {
+  async getTemplate(@Param('id') id: string) {
     return this.contractsService.getTemplate(id);
   }
 
