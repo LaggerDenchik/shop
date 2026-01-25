@@ -37,22 +37,36 @@ export class CabinetsService {
   }
 
   async updateOrganization(orgId: string, data: any) {
-    const organization = await this.orgRepository.findOne({ where: { id: orgId } });
-    
+    const organization = await this.orgRepository.findOne({
+      where: { id: orgId }
+    });
+
     if (!organization) {
       throw new NotFoundException('Организация не найдена');
     }
-    
-    Object.assign(organization, {
-      name: data.name ?? organization.name,
-      representative: data.representative ?? organization.representative,
-      email: data.email ?? organization.email,
-      phone: data.phone ?? organization.phone,
-      unp: data.unp ?? organization.unp,
-      address: data.address ?? organization.address,
-      description: data.description ?? organization.description,
+
+    const updatableFields = [
+      'name',
+      'shortname',
+      'ceo',
+      'representative',
+      'phone',
+      'unp',
+      'acc',
+      'country',
+      'currency',
+      'address',
+      'addressf',
+      'description',
+      'other'
+    ];
+
+    updatableFields.forEach((field) => {
+      if (data[field] !== undefined) {
+        organization[field] = data[field];
+      }
     });
-    
+
     await this.orgRepository.save(organization);
     return organization;
   }

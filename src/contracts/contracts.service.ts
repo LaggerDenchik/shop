@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Contract } from './entities/contract.entity';
@@ -52,7 +52,6 @@ export class ContractsService {
   }
 
   async updateOrg(id: string, dto: UpdateOrgContractDto) {
-    console.log("DTO: ", dto)
     const contract = await this.findOne(id);
 
     if (!contract) {
@@ -62,20 +61,43 @@ export class ContractsService {
     if (dto.contractNumber !== undefined) {
       contract.contractNumber = dto.contractNumber;
     }
+
     if (dto.prepayment !== undefined) {
       contract.prepayment = dto.prepayment;
     }
+
     if (dto.price !== undefined) {
       contract.price = dto.price;
     }
 
-    // пересчёт остатка
+    if (dto.contractDate !== undefined) {
+      contract.contractDate = new Date(dto.contractDate);
+    }
+
+    // пересчёт остатка 
     if (contract.price !== undefined && contract.prepayment !== undefined) {
       contract.remainder = contract.price - contract.prepayment;
     }
-    
-    if (dto.contractDate !== undefined) {
-      contract.contractDate = new Date(dto.contractDate);
+
+    if (dto.status === 'org_confirmed') {
+      if (contract.status !== 'draft') {
+        throw new BadRequestException(
+          'Организация в текущем состоянии не может подтвердить заключение контракта'
+        );
+      }
+
+      contract.status = 'org_confirmed';
+
+      const order = await this.orderRepo.findOne({
+        where: { externalId: contract.orderId },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      order.status = 'processing';
+      await this.orderRepo.save(order);
     }
 
     return this.repo.save(contract);

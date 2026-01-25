@@ -21,14 +21,31 @@ export class OrdersService {
     private apiPlService: ApiPlService
   ) {}
 
-  async getOrdersByDealer(dealerOrgId: string, dealerEmail: string) {
+  async getOrdersByDealer(dealerOrgId: string) {
+    const organization = await this.orgRepo.findOne({
+      where: { id: dealerOrgId },
+      select: ['email'],
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Организация не найдена');
+    }
+
     return this.ordersRepo
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.dealerOrganization', 'dealerOrganization')
-      .where('order.dealer_org_id = :dealerOrgId', { dealerOrgId })
-      .orWhere(
-        'order.email = :dealerEmail AND order.dealer_org_id IS NULL',
-        { dealerEmail }
+      .where(
+        `
+        order.dealer_org_id = :dealerOrgId
+        OR (
+          order.email = :orgEmail
+          AND order.dealer_org_id IS NULL
+        )
+        `,
+        {
+          dealerOrgId,
+          orgEmail: organization.email,
+        }
       )
       .orderBy('order.createdAt', 'DESC')
       .getMany();
@@ -52,7 +69,9 @@ export class OrdersService {
       throw new NotFoundException('Заказ не найден');
     }
 
-    // Клиент — только свои заказы
+    // ---------------------------
+    // Клиент
+    // ---------------------------
     if (!user.organizationId) {
       if (order.customerId !== user.id) {
         throw new ForbiddenException('Нет доступа');
@@ -60,13 +79,38 @@ export class OrdersService {
       return order;
     }
 
-    // Дилер — назначенные ИЛИ свои по email
-    const hasDealerAccess =
-      order.dealerOrgId === user.organizationId ||
-      order.email === user.email;
+    // ---------------------------
+    // Организация (владелец)
+    // ---------------------------
+    const isOrgOwner =
+      user.role?.scope === 'organization' &&
+      user.role?.name === 'org_admin'; // ← пример
 
-    if (!hasDealerAccess) {
-      throw new ForbiddenException('Нет доступа');
+    if (isOrgOwner) {
+      return order;
+    }
+
+    // ---------------------------
+    // Сотрудник организации
+    // ---------------------------
+    const hasPermission =
+      user.permissions?.some(
+        (p) => p.tag === 'view_orders' || p.tag === 'edit_orders'
+      );
+
+    if (!hasPermission) {
+      throw new ForbiddenException('Недостаточно прав');
+    }
+
+    const belongsToOrganization =
+      order.dealerOrgId === user.organizationId ||
+      (
+        !order.dealerOrgId &&
+        order.email === user.organizationEmail
+      );
+
+    if (!belongsToOrganization) {
+      throw new ForbiddenException('Заказ ещё не назначен, зайдите с администратора организации');
     }
 
     return order;
@@ -88,7 +132,6 @@ export class OrdersService {
     if (!dealer) throw new NotFoundException('Дилер не найден');
 
     order.dealerOrgId = dealerOrgId;
-    order.status = 'assigned';
 
     return this.ordersRepo.save(order);
   }
