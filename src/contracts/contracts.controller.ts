@@ -1,12 +1,13 @@
-import { Controller, Get, Post, Body, Param, Put, UploadedFile, UseInterceptors, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, UploadedFile, UseInterceptors, Req, Res, NotFoundException } from '@nestjs/common';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateBuyerDto } from './dto/update-buyer.dto';
 import { UpdateOrgDto } from './dto/update-org.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import * as path from 'path';
+import * as fs from 'fs';
 import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
+import { Response } from 'express';
 
 @Controller('contracts')
 export class ContractsController {
@@ -33,11 +34,32 @@ export class ContractsController {
   }
 
   @Get(':id/pdf')
-  generatePdf(
+  async downloadPdf(
     @Param('id') id: string,
-    @Body() body: { html: string }
+    @Res() res: Response
   ) {
-    return this.contractsService.generatePdfFromHtml(id, body.html);
+    const contract = await this.contractsService.findOne(id);
+
+    if (!contract.pdfFile || !fs.existsSync(contract.pdfFile)) {
+      await this.contractsService.generatePdf(id);
+    }
+
+    const updated = await this.contractsService.findOne(id);
+
+    if (!updated.pdfFile) {
+      throw new NotFoundException('PDF не найден');
+    }
+
+    const fileName = this.contractsService.buildPdfFileName(updated);
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"; filename*=UTF-8''${encodedFileName}`
+    );
+
+    res.sendFile(updated.pdfFile);
   }
 
   @Post(':id/sign/buyer')

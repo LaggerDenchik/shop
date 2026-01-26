@@ -103,35 +103,16 @@ export class ContractsService {
     return this.repo.save(contract);
   }
 
-  async generatePdfFromHtml(id: string, html: string) {
-    const contract = await this.findOne(id);
+  buildPdfFileName(contract: Contract): string {
+    const number = contract.contractNumber || 'contract';
+    const date = contract.contractDate
+      ? contract.contractDate.toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
 
-    const pdfDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(pdfDir)) {
-        fs.mkdirSync(pdfDir, { recursive: true });
-    }
+    // чистим номер договора
+    const safeNumber = number.replace(/[^\w.-]+/g, '_');
 
-    const pdfPath = path.join(pdfDir, `contract-${id}.pdf`);
-
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    await page.pdf({
-        path: pdfPath,
-        format: 'A4',
-        printBackground: true,
-    });
-
-    await browser.close();
-
-    contract.pdfFile = pdfPath;
-    await this.repo.save(contract);
-
-    return { pdfPath };
+    return `Dogovor_${safeNumber}_${date}.pdf`;
   }
 
   async generatePdf(id: string): Promise<string> {
@@ -140,6 +121,20 @@ export class ContractsService {
     // Путь к HTML-шаблону
     const templatePath = path.join(__dirname, 'templates', 'contract-template.html');
     let templateHtml = fs.readFileSync(templatePath, 'utf-8');
+
+    const price = contract.price !== undefined && contract.price !== null
+      ? Number(contract.price)
+      : null;
+
+    const prepayment = contract.prepayment !== undefined && contract.prepayment !== null
+      ? Number(contract.prepayment)
+      : null;
+
+    const remainder = contract.remainder !== undefined && contract.remainder !== null
+      ? Number(contract.remainder)
+      : null;
+
+    
 
     // Данные для подстановки
     const data = {
@@ -163,14 +158,15 @@ export class ContractsService {
       'ГОРОД': contract.orgCity || '',
       'ИНДЕКС': contract.orgIndex || '',
       'ТЕЛЕФОН': contract.orgPhone || '',
-      'ЦЕНА': contract.price?.toFixed(2) || '',
-      'ПРЕДОПЛАТА': contract.prepayment?.toFixed(2) || '',
-      'ОСТАТОК': contract.remainder?.toFixed(2) || '',
+      'ЦЕНА': price !== null ? price.toFixed(2) : '',
+      'ПРЕДОПЛАТА': prepayment !== null ? prepayment.toFixed(2) : '',
+      'ОСТАТОК': remainder !== null ? remainder.toFixed(2) : '',
       'ЧИСЛО': new Date().getDate(),
       'МЕСЯЦ': new Date().toLocaleString('ru-RU', { month: 'long' }),
       'ГОД': new Date().getFullYear()
     };
-
+    
+    console.log("Data: ", data)
     // Подставляем данные в шаблон
     Object.keys(data).forEach(key => {
       const regex = new RegExp(`{${key}}`, 'g');
