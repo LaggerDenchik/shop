@@ -38,11 +38,8 @@ export class ContractsController {
     @Param('id') id: string,
     @Res() res: Response
   ) {
-    const contract = await this.contractsService.findOne(id);
 
-    if (!contract.pdfFile || !fs.existsSync(contract.pdfFile)) {
-      await this.contractsService.generatePdf(id);
-    }
+    await this.contractsService.generatePdf(id);
 
     const updated = await this.contractsService.findOne(id);
 

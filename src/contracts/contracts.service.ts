@@ -109,7 +109,6 @@ export class ContractsService {
       ? contract.contractDate.toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
 
-    // чистим номер договора
     const safeNumber = number.replace(/[^\w.-]+/g, '_');
 
     return `Dogovor_${safeNumber}_${date}.pdf`;
@@ -117,80 +116,92 @@ export class ContractsService {
 
   async generatePdf(id: string): Promise<string> {
     const contract = await this.findOne(id);
+    if (!contract) throw new NotFoundException('Contract not found');
 
-    // Путь к HTML-шаблону
+    const order = await this.orderRepo.findOne({
+      where: { externalId: contract.orderId },
+      relations: ['dealerOrganization'],
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const org = order.dealerOrganization || {};
+
+    const templateData = {
+      contractNumber: contract.contractNumber || '—',
+      buyerFullName: contract.buyerFullName || '—',
+      buyerPassportSeries: contract.buyerPassportSeries || '—',
+      buyerPassportNumber: contract.buyerPassportNumber || '—',
+      buyerPassportIssuedBy: contract.buyerPassportIssuedBy || '—',
+      buyerPassportIssueDate: contract.buyerPassportIssueDate
+        ? new Date(contract.buyerPassportIssueDate).toLocaleDateString('ru-RU')
+        : '—',
+      buyerAddress: contract.buyerAddress || '—',
+      buyerCity: contract.buyerCity || '—',
+      buyerIndex: contract.buyerIndex || '—',
+      buyerPhone: contract.buyerPhone || '—',
+      orgName: contract.orgName || org.name || '—',
+      orgLegalForm: contract.orgLegalForm || org.shortname || '—',
+      orgUNP: contract.orgUNP || org.unp || '—',
+      orgDirector: contract.orgDirector || org.ceo || '—',
+      orgAddress: contract.orgAddress || org.address || '—',
+      orgPhone: contract.orgPhone || org.phone || '—',
+      price: Number(contract.price ?? order.totalPrice ?? 0),
+      prepayment: Number(contract.prepayment ?? 0),
+      remainder: Number(contract.remainder ?? (contract.price ?? order.totalPrice ?? 0) - (contract.prepayment ?? 0)),
+    };
+
     const templatePath = path.join(__dirname, 'templates', 'contract-template.html');
     let templateHtml = fs.readFileSync(templatePath, 'utf-8');
 
-    const price = contract.price !== undefined && contract.price !== null
-      ? Number(contract.price)
-      : null;
-
-    const prepayment = contract.prepayment !== undefined && contract.prepayment !== null
-      ? Number(contract.prepayment)
-      : null;
-
-    const remainder = contract.remainder !== undefined && contract.remainder !== null
-      ? Number(contract.remainder)
-      : null;
-
-    
-
-    // Данные для подстановки
     const data = {
-      'НОМЕР': contract.contractNumber || '',
-      'ФИО_ФИЗ': contract.buyerFullName || '',
-      'СЕРИЯ_ФИЗ': contract.buyerPassportSeries || '',
-      'НОМЕР_ПАСПОРТА_ФИЗ': contract.buyerPassportNumber || '',
-      'КЕМ_ВЫДАН_ФИЗ': contract.buyerPassportIssuedBy || '',
-      'ДАТА_ВЫДАЧИ_ФИЗ': contract.buyerPassportIssueDate
-        ? new Date(contract.buyerPassportIssueDate).toLocaleDateString('ru-RU')
-        : '',
-      'АДРЕС_ФИЗ': contract.buyerAddress || '',
-      'ГОРОД_ФИЗ': contract.buyerCity || '',
-      'ИНДЕКС_ФИЗ': contract.buyerIndex || '',
-      'ТЕЛЕФОН_ФИЗ': contract.buyerPhone || '',
-      'НАЗВАНИЕ': contract.orgName || '',
-      'ЮР_ФОРМА': contract.orgLegalForm || '',
-      'УНП': contract.orgUNP || '',
-      'ДИРЕКТОР': contract.orgDirector || '',
-      'АДРЕС': contract.orgAddress || '',
-      'ГОРОД': contract.orgCity || '',
-      'ИНДЕКС': contract.orgIndex || '',
-      'ТЕЛЕФОН': contract.orgPhone || '',
-      'ЦЕНА': price !== null ? price.toFixed(2) : '',
-      'ПРЕДОПЛАТА': prepayment !== null ? prepayment.toFixed(2) : '',
-      'ОСТАТОК': remainder !== null ? remainder.toFixed(2) : '',
+      'НОМЕР': templateData.contractNumber,
+      'ФИО_ФИЗ': templateData.buyerFullName,
+      'СЕРИЯ_ФИЗ': templateData.buyerPassportSeries,
+      'НОМЕР_ПАСПОРТА_ФИЗ': templateData.buyerPassportNumber,
+      'КЕМ_ВЫДАН_ФИЗ': templateData.buyerPassportIssuedBy,
+      'ДАТА_ВЫДАЧИ_ФИЗ': templateData.buyerPassportIssueDate,
+      'АДРЕС_ФИЗ': templateData.buyerAddress,
+      'ГОРОД_ФИЗ': templateData.buyerCity,
+      'ИНДЕКС_ФИЗ': templateData.buyerIndex,
+      'ТЕЛЕФОН_ФИЗ': templateData.buyerPhone,
+      'НАЗВАНИЕ': templateData.orgName,
+      'ЮР_ФОРМА': templateData.orgLegalForm,
+      'УНП': templateData.orgUNP,
+      'ДИРЕКТОР': templateData.orgDirector,
+      'АДРЕС': templateData.orgAddress,
+      'ТЕЛЕФОН': templateData.orgPhone,
+      'ЦЕНА': templateData.price.toFixed(2),
+      'ПРЕДОПЛАТА': templateData.prepayment.toFixed(2),
+      'ОСТАТОК': templateData.remainder.toFixed(2),
       'ЧИСЛО': new Date().getDate(),
       'МЕСЯЦ': new Date().toLocaleString('ru-RU', { month: 'long' }),
-      'ГОД': new Date().getFullYear()
+      'ГОД': new Date().getFullYear(),
     };
-    
-    console.log("Data: ", data)
-    // Подставляем данные в шаблон
-    Object.keys(data).forEach(key => {
-      const regex = new RegExp(`{${key}}`, 'g');
-      templateHtml = templateHtml.replace(regex, data[key]);
+
+    Object.keys(data).forEach((key) => {
+      templateHtml = templateHtml.replace(new RegExp(`{${key}}`, 'g'), data[key]);
     });
 
-    // Путь для сохранения PDF
     const pdfDir = path.join(__dirname, '..', 'uploads');
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
+
     const pdfPath = path.join(pdfDir, `contract-${id}.pdf`);
 
-    // Генерация PDF через Puppeteer
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
     await page.setContent(templateHtml, { waitUntil: 'networkidle0' });
     await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
     await browser.close();
 
-    // Сохраняем путь в контракте
     contract.pdfFile = pdfPath;
     await this.repo.save(contract);
 
-    return pdfPath; // возвращаем путь к PDF
-  }
+    return pdfPath;
+}
 
   async signBuyer(id: string, filePath: string) {
     const contract = await this.findOne(id);
