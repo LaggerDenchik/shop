@@ -54,13 +54,13 @@ export class User {
   @JoinColumn({ name: 'organization_id' })
   organization?: Organization;
 
-  @ManyToMany(() => Permission, { eager: true })
-  // @ManyToMany(() => Permission)
-  @JoinTable({
-    name: 'user_permissions', 
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
-  })
+  // @ManyToMany(() => Permission, { eager: true })
+  // // @ManyToMany(() => Permission)
+  // @JoinTable({
+  //   name: 'user_permissions', 
+  //   joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+  //   inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
+  // })
   permissions: Permission[];
 
   @BeforeInsert()

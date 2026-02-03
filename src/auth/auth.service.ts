@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,7 +9,7 @@ import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { EmailVerification } from './entities/email-verification.entity';
 import * as nodemailer from 'nodemailer';
-import { TokenPayload } from './interfaces/token-payload.interface';
+// import { TokenPayload } from './interfaces/token-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -118,14 +118,19 @@ export class AuthService {
       throw new BadRequestException('Укажите email или телефон');
     }
 
-    const existing = await this.usersRepository.findOne({ where: [{ email }, { phone }] });
+    const existing = await this.usersRepository.findOne({
+      where: [{ email }, { phone }],
+    });
     if (existing) throw new ConflictException('Пользователь уже существует');
 
     let organizationId: string | null = null;
-    let role: Role | null = null;
+    let role: Role | undefined;
 
     if (type === 'organization') {
-      if (!organizationName) throw new BadRequestException('Не указано название организации');
+      if (!organizationName) {
+        throw new BadRequestException('Не указано название организации');
+      }
+
       const org = this.orgRepository.create({
         name: organizationName,
         representative: representative ?? fullName,
@@ -133,12 +138,21 @@ export class AuthService {
         email,
         phone,
       });
+
       const savedOrg = await this.orgRepository.save(org);
       organizationId = savedOrg.id;
 
-      role = await this.rolesRepository.findOne({ where: { name: 'org_admin' }, relations: ['permissions'] });
+      role = await this.rolesRepository.findOne({
+        where: { name: 'org_admin' },
+      }) ?? undefined;
     } else {
-      role = await this.rolesRepository.findOne({ where: { name: 'customer' }, relations: ['permissions'] });
+      role = await this.rolesRepository.findOne({
+        where: { name: 'customer' },
+      }) ?? undefined;
+    }
+
+    if (!role) {
+      throw new InternalServerErrorException('Роль не найдена');
     }
 
     const user = this.usersRepository.create({
@@ -148,17 +162,18 @@ export class AuthService {
       fullName,
       type,
       organizationId,
-      roleId: role?.id,
+      role,
       isEmailVerified: false,
       isVerified: false,
     });
 
     await this.usersRepository.save(user);
 
-    // Сразу отправляем код подтверждения
     await this.sendVerificationCode(user.email);
 
-    return { message: 'Регистрация успешна. Подтвердите email, код отправлен на почту.' };
+    return {
+      message: 'Регистрация успешна. Подтвердите email, код отправлен на почту.',
+    };
   }
 
   async validateLogin(login: string, password: string): Promise<User | null> {
@@ -201,12 +216,12 @@ export class AuthService {
   // }
   
   async login(user: User) {
-    // Загружаем пользователя со связями role и permissions
     const userWithRelations = await this.usersRepository.findOne({
       where: { id: user.id },
-      relations: ['role', 'role.permissions', 'permissions'], // важно!
+      relations: ['role', 'role.permissions'], 
     });
     
+
     if (!userWithRelations) {
       throw new NotFoundException('Пользователь не найден');
     }
@@ -215,8 +230,8 @@ export class AuthService {
       throw new ForbiddenException('Email не подтверждён');
     }
 
-    // Определяем тип пользователя (для маршрутизации фронта)
     let userType = 'customer';
+
     if (
       userWithRelations.role?.name === 'org_admin' ||
       userWithRelations.role?.name === 'org_user'
@@ -226,18 +241,16 @@ export class AuthService {
       userType = 'admin';
     }
 
-    // Объединяем права из роли и персональные
-    const rolePerms = userWithRelations.role?.permissions?.map(p => p.tag) || [];
-    const userPerms = userWithRelations.permissions?.map(p => p.tag) || [];
-
-    // Убираем дубликаты
-    const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
+    const permissions =
+      userWithRelations.role?.permissions?.map(p => p.tag) ?? [];
+    userWithRelations.permissions =userWithRelations.role?.permissions ?? [];
 
     const payload = {
       sub: userWithRelations.id,
       email: userWithRelations.email,
       type: userType,
       name: userWithRelations.fullName,
+      role: userWithRelations.role?.name,
     };
 
     return {
@@ -247,9 +260,9 @@ export class AuthService {
         email: userWithRelations.email,
         fullName: userWithRelations.fullName,
         phone: userWithRelations.phone,
-        roleId: userWithRelations.roleId,
+        roleId: userWithRelations.role?.id,
         roleName: userWithRelations.role?.name,
-        permissions: mergedPermissions,
+        permissions,
         createdAt: userWithRelations.createdAt,
         type: userType,
       },
@@ -337,14 +350,14 @@ export class AuthService {
   }
 
   /** Создать guest-пользователя */
-  async createGuestUser(): Promise<Partial<User>> {
-    return {
-      id: 'guest',
-      fullName: 'Гость',
-      type: 'guest',
-      permissions: [],
-    };
-  }
+  // async createGuestUser(): Promise<Partial<User>> {
+  //   return {
+  //     id: 'guest',
+  //     fullName: 'Гость',
+  //     type: 'guest',
+  //     permissions: [],
+  //   };
+  // }
 
   /** Генерация JWT */
   generateJwt(user: User): string {

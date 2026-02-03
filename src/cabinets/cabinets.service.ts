@@ -87,18 +87,20 @@ export class CabinetsService {
         organizationId: user.organizationId,
         roleId: '7fc971b0-50b4-4b00-be6b-bba457656160',
       },
-      relations: ['permissions'],
+      relations: ['role', 'role.permissions'],
       select: {
         id: true,
         email: true,
         fullName: true,
         phone: true,
         createdAt: true,
-        permissions: {
-          id: true,
-          tag: true,
-          name: true,
-          groups: true,
+        role: {
+          permissions: {
+            id: true,
+            tag: true,
+            name: true,
+            groups: true,
+          },
         },
       },
     });
@@ -122,7 +124,7 @@ export class CabinetsService {
 
     const role = await this.rolesRepository.findOne({
       where: { name: 'org_user' },
-      relations: ['permissions'],
+      relations: ['role', 'role.permissions']
     });
 
     if (!role) {
@@ -140,7 +142,6 @@ export class CabinetsService {
       roleId: role.id,
       type: 'customer',
       isEmailVerified: true,
-      permissions: role.permissions, 
     });
 
     const saved = await this.usersRepository.save(newEmployee);
@@ -243,7 +244,7 @@ export class CabinetsService {
 
     const employee = await this.usersRepository.findOne({
       where: { id: employeeId, organizationId: orgUser.organizationId },
-      relations: ['permissions'],
+      relations: ['role', 'role.permissions'],
     });
 
     if (!employee) {
