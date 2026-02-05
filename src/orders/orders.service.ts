@@ -226,4 +226,25 @@ export class OrdersService {
 
     return { updated: true };
   }
+
+  async updateOrderStatus(
+    externalId: string,
+    status: string,
+    user: any
+  ): Promise<Order> {
+    const order = await this.ordersRepo.findOne({
+      where: { externalId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Заказ не найден');
+    }
+
+    if (!user.organizationId && order.customerId !== user.id) {
+      throw new ForbiddenException('Нет доступа');
+    }
+
+    order.status = status;
+    return this.ordersRepo.save(order);
+  }
 }

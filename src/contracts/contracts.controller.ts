@@ -81,6 +81,41 @@ export class ContractsController {
     return this.contractsService.signOrg(id, file.path);
   }
 
+  @Post(':id/signed-file')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const contractId = req.params.id;
+          const dir = `./uploads/contracts/${contractId}`;
+
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          const timestamp = Date.now();
+          const safeName = file.originalname.replace(/\s+/g, '_');
+          cb(null, `${timestamp}-${safeName}`);
+        }
+      })
+    })
+  )
+  uploadSignedFile(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    return this.contractsService.storeSignedFile(id, file.path);
+  }
+
+  @Post(':id/signed')
+  signedContract(@Param('id') id: string) {
+    return this.contractsService.signedContract(id);
+  }
+
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.contractsService.findOne(id);

@@ -49,6 +49,16 @@ export class OrdersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':externalId/status')
+  updateStatus(
+    @Param('externalId') externalId: string,
+    @Body('status') status: string,
+    @Req() req
+  ) {
+    return this.ordersService.updateOrderStatus(externalId, status, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/dealer')
   assignDealer(
     @Param('id') orderId: string,

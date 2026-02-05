@@ -297,4 +297,49 @@ export class ContractsService {
       },
     };
   }
+
+  async storeSignedFile(contractId: string, filePath: string) {
+    const contract = await this.findOne(contractId);
+
+    contract.lastSignedFile = filePath;
+
+    return this.repo.save(contract);
+  }
+
+  async signedContract(contractId: string) {
+    const contract = await this.findOne(contractId);
+
+    const dir = path.join(
+      process.cwd(),
+      'uploads',
+      'contracts',
+      contractId
+    );
+
+    if (!fs.existsSync(dir)) {
+      throw new BadRequestException('Файлы договора не найдены');
+    }
+
+    const files = fs
+      .readdirSync(dir)
+      .filter(f => fs.statSync(path.join(dir, f)).isFile());
+
+    if (!files.length) {
+      throw new BadRequestException('Нет загруженных файлов');
+    }
+
+    files.sort();
+
+    const finalFile = files[files.length - 1];
+    const finalPath = path.join(dir, finalFile);
+
+    for (const file of files.slice(0, -1)) {
+      fs.unlinkSync(path.join(dir, file));
+    }
+
+    contract.status = 'signed';
+    contract.lastSignedFile = finalPath;
+
+    return this.repo.save(contract);
+  }
 }
