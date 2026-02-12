@@ -80,7 +80,7 @@ export class CatalogService {
     try {
       if (this.API_TOKEN == '') this.getToken();
       const url = `${this.API_HOST}/api/catalog/${query}`;
-console.log(url);
+      console.log(url);
       // Используем POST
       const response = await firstValueFrom(
         this.httpService.post(

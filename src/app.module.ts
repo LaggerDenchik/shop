@@ -10,6 +10,7 @@ import { PhoneVerificationModule } from './phone-verification/phone-verification
 import { ApiPlModule } from 'planplace/apiPl.module';
 import { ContractsModule } from 'contracts/contracts.module';
 import { OrdersModule } from 'orders/orders.module';
+import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
 
 @Module({
   imports: [
@@ -49,7 +50,8 @@ import { OrdersModule } from 'orders/orders.module';
     SettingsModule,
     EmailVerification,
     PhoneVerificationModule,
-    OrdersModule
+    OrdersModule,
+    YandexCloudModule
   ],
 })
 export class AppModule {}
