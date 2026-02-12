@@ -13,12 +13,12 @@ import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
 @Injectable()
 export class ContractsService {
   constructor(
-    @InjectRepository(Contract) 
+    @InjectRepository(Contract)
     private repo: Repository<Contract>,
-  
-    @InjectRepository(Order) 
+
+    @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>
-  ) {}
+  ) { }
 
   async create(dto: CreateContractDto) {
     const contract = this.repo.create(dto);
@@ -46,7 +46,7 @@ export class ContractsService {
     contract.buyerIndex = dto.buyerIndex;
     contract.buyerPhone = dto.buyerPhone;
 
-    contract.status = 'buyer_confirmed';
+    contract.status = 'ready_for_sign';
 
     return this.repo.save(contract);
   }
@@ -201,20 +201,6 @@ export class ContractsService {
     await this.repo.save(contract);
 
     return pdfPath;
-}
-
-  async signBuyer(id: string, filePath: string) {
-    const contract = await this.findOne(id);
-    contract.signedBuyerFile = filePath;
-    contract.status = 'signed';
-    return this.repo.save(contract);
-  }
-
-  async signOrg(id: string, filePath: string) {
-    const contract = await this.findOne(id);
-    contract.signedOrgFile = filePath;
-    contract.status = 'completed';
-    return this.repo.save(contract);
   }
 
   async getTemplate(externalOrderId: string) {
@@ -227,33 +213,33 @@ export class ContractsService {
 
     const org = order.dealerOrganization
       ? {
-          name: order.dealerOrganization.name || '',
-          legalForm: order.dealerOrganization.shortname || 'ООО',
-          unp: order.dealerOrganization.unp || '',
-          director: order.dealerOrganization.ceo || '',
-          address: order.dealerOrganization.address || '',
-          city: '', 
-          index: '',
-          phone: order.dealerOrganization.phone || '',
-        }
+        name: order.dealerOrganization.name || '',
+        legalForm: order.dealerOrganization.shortname || 'ООО',
+        unp: order.dealerOrganization.unp || '',
+        director: order.dealerOrganization.ceo || '',
+        address: order.dealerOrganization.address || '',
+        city: '',
+        index: '',
+        phone: order.dealerOrganization.phone || '',
+      }
       : {
-          name: '',
-          legalForm: '',
-          unp: '',
-          director: '',
-          address: '',
-          city: '',
-          index: '',
-          phone: '',
-        };
+        name: '',
+        legalForm: '',
+        unp: '',
+        director: '',
+        address: '',
+        city: '',
+        index: '',
+        phone: '',
+      };
 
     let contract = await this.repo.findOne({
-      where: { orderId: order.externalId }, 
+      where: { orderId: order.externalId },
     });
 
     if (!contract) {
       contract = this.repo.create({
-        orderId: order.externalId, 
+        orderId: order.externalId,
         status: 'draft',
         orgName: org.name,
         orgLegalForm: org.legalForm,
@@ -298,47 +284,40 @@ export class ContractsService {
     };
   }
 
-  async storeSignedFile(contractId: string, filePath: string) {
+  async uploadSignedFile(
+    contractId: string,
+    file: Express.Multer.File,
+    role: 'buyer' | 'org',
+    isOrgActingAsBuyer = false
+  ) {
     const contract = await this.findOne(contractId);
 
-    contract.lastSignedFile = filePath;
-
-    return this.repo.save(contract);
-  }
-
-  async signedContract(contractId: string) {
-    const contract = await this.findOne(contractId);
-
-    const dir = path.join(
-      process.cwd(),
-      'uploads',
-      'contracts',
-      contractId
-    );
-
-    if (!fs.existsSync(dir)) {
-      throw new BadRequestException('Файлы договора не найдены');
+    if (
+      contract.status !== 'ready_for_sign' &&
+      contract.status !== 'signed_by_org'
+    ) {
+      throw new BadRequestException('Договор не готов к подписанию');
     }
 
-    const files = fs
-      .readdirSync(dir)
-      .filter(f => fs.statSync(path.join(dir, f)).isFile());
+    if (role === 'org') {
+      contract.orgSignedFile = file.path;
 
-    if (!files.length) {
-      throw new BadRequestException('Нет загруженных файлов');
+      if (isOrgActingAsBuyer) {
+        // организация подписывает за себя и покупателя сразу
+        contract.buyerSignedFile = file.path;
+        contract.status = 'signed';
+      } else {
+        contract.status = 'signed_by_org';
+      }
     }
 
-    files.sort();
-
-    const finalFile = files[files.length - 1];
-    const finalPath = path.join(dir, finalFile);
-
-    for (const file of files.slice(0, -1)) {
-      fs.unlinkSync(path.join(dir, file));
+    if (role === 'buyer') {
+      if (contract.status !== 'signed_by_org') {
+        throw new BadRequestException('Организация ещё не подписала');
+      }
+      contract.buyerSignedFile = file.path;
+      contract.status = 'signed';
     }
-
-    contract.status = 'signed';
-    contract.lastSignedFile = finalPath;
 
     return this.repo.save(contract);
   }
