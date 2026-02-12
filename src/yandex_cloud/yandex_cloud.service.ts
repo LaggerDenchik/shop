@@ -28,11 +28,12 @@ export class YandexCloudService {
     // через 30 минут ссылка перестанет работать и ее нужно будет запросить заново
     async uploadFileToYandexDisk(pathfolder: string, fileBuffer: Buffer) {
         const url = `${process.env.CLOUD_URL}/upload`;
+        // const encodedPath = encodeURIComponent(pathfolder);
         try {
             // Получение URL для загрузки
             const uploadUrlResponse = await axios.get(url, {
                 params: {
-                    path: pathfolder,
+                    path: Buffer.from(pathfolder, 'utf8').toString(),
                     overwrite: true
                 },
                 headers: {
@@ -78,9 +79,9 @@ export class YandexCloudService {
         }
     }
 
-    async getFilesFromFolder(userId: string, orderId: string) {
+    /* async getFilesFromFolder(userId: string, orderId: string) {
         const TOKEN = process.env.CLOUD_TOKEN;
-        const remotePath = `disk:/shop/users/${userId}/orders/${orderId}`;
+        const remotePath = `disk:/shop/users/${userId}/orders/${orderId}/excel`;
 
         const url = process.env.CLOUD_URL ? process.env.CLOUD_URL : 'noURL';
 
@@ -111,12 +112,74 @@ export class YandexCloudService {
 
             return result;
         } catch (e) {
-            console.error('Путь Яндекса:', remotePath);
-            console.error('Детали ошибки Яндекса:', e.response?.data || e.message);
-            throw new Error(`Не удалось загрузить файлы: ${e.response?.data?.message || e.message}`);
-        }
-    }
+            if (axios.isAxiosError(e)) {
+                if (e.response?.status === 404) {
+                    return {};
+                }
 
+                console.error('Ошибка Яндекс.Диска:', e.response?.data);
+                throw new Error(
+                    `Не удалось загрузить файлы: ${e.response?.data?.message || e.message}`
+                );
+            }
+
+            throw e;
+        }
+    }  */
+
+    async getFilesFromFolder(
+        userId: string,
+        orderId: string,
+        type: 'excel' | 'db'
+    ) {
+        const TOKEN = process.env.CLOUD_TOKEN;
+
+        const remotePath =
+            `disk:/shop/users/${userId}/orders/${orderId}/${type}`;
+
+        const allowedExtensions =
+            type === 'excel'
+                ? ['.xlsx', '.csv']
+                : ['.dbx', '.json', '.dbs'];
+
+        try {
+            const { data } = await axios.get(process.env.CLOUD_URL!, {
+                params: { path: remotePath, limit: 100 },
+                headers: { Authorization: `OAuth ${TOKEN}` }
+            });
+
+            const items = data._embedded?.items || [];
+            const result: Record<string, string> = {};
+
+            for (const item of items) {
+                if (
+                    item.type === 'file' &&
+                    allowedExtensions.some(ext =>
+                        item.name.toLowerCase().endsWith(ext)
+                    )
+                ) {
+                    const fileResponse = await axios.get(item.file, {
+                        responseType: 'arraybuffer'
+                    });
+
+                    result[item.name] = Buffer
+                        .from(fileResponse.data)
+                        .toString('base64');
+                }
+            }
+
+            return result;
+
+        } catch (e) {
+            if (axios.isAxiosError(e) && e.response?.status === 404) {
+                return {};
+            }
+
+            throw e;
+        }
+    } 
+    
+    // TODO: Создавать при смене статуса с новый на просмотренный
     // Метод для создания папок, если их нет
     async createRemoteFolderRecursive(remotePath) {
         const url = process.env.CLOUD_URL || 'noURL';
