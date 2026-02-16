@@ -25,15 +25,14 @@ export class YandexCloudService {
         }
     }
 
-    // через 30 минут ссылка перестанет работать и ее нужно будет запросить заново
     async uploadFileToYandexDisk(pathfolder: string, fileBuffer: Buffer) {
         const url = `${process.env.CLOUD_URL}/upload`;
-        // const encodedPath = encodeURIComponent(pathfolder);
+
         try {
             // Получение URL для загрузки
             const uploadUrlResponse = await axios.get(url, {
                 params: {
-                    path: Buffer.from(pathfolder, 'utf8').toString(),
+                    path: pathfolder,
                     overwrite: true
                 },
                 headers: {
@@ -43,15 +42,15 @@ export class YandexCloudService {
 
             const href = uploadUrlResponse.data.href;
 
-            // Загрузка файла
+            // Загрузка файла без лишних преобразований
             await axios.put(href, fileBuffer, {
                 headers: {
-                    'Content-Type': 'application/octet-stream' // или тип файла
+                    'Content-Type': 'application/octet-stream'
                 }
             });
 
-            console.log('Файл успешно загружен');
-            console.log(`Запрос URL для загрузки "${pathfolder}".\n Статус: ${uploadUrlResponse.status}`);
+            console.log('Файл успешно загружен:', pathfolder);
+
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 console.error('Ошибка запроса URL:', error.response?.data);
@@ -79,68 +78,10 @@ export class YandexCloudService {
         }
     }
 
-    /* async getFilesFromFolder(userId: string, orderId: string) {
+    async getFilesFromFolder(userId: string, orderId: string, type: 'excel' | 'db') {
         const TOKEN = process.env.CLOUD_TOKEN;
-        const remotePath = `disk:/shop/users/${userId}/orders/${orderId}/excel`;
-
-        const url = process.env.CLOUD_URL ? process.env.CLOUD_URL : 'noURL';
-
-        try {
-            const { data: folderInfo } = await axios.get(url, {
-                params: {
-                    path: remotePath,
-                    limit: 100 // Чтобы точно подцепить все файлы в папке
-                },
-                headers: { Authorization: `OAuth ${TOKEN}` }
-            });
-
-            const items = folderInfo._embedded?.items || [];
-            const result: Record<string, string> = {};
-
-            for (const item of items) {
-                // Проверяем, что это файл и он имеет расширение .xlsx
-                if (item.type === 'file' && item.name.toLowerCase().endsWith('.xlsx')) {
-                    // item.file — это уже готовая прямая ссылка на скачивание контента
-                    const fileResponse = await axios.get(item.file, {
-                        responseType: 'arraybuffer'
-                    });
-
-                    // Конвертируем Buffer в base64 для передачи в JSON
-                    result[item.name] = Buffer.from(fileResponse.data).toString('base64');
-                }
-            }
-
-            return result;
-        } catch (e) {
-            if (axios.isAxiosError(e)) {
-                if (e.response?.status === 404) {
-                    return {};
-                }
-
-                console.error('Ошибка Яндекс.Диска:', e.response?.data);
-                throw new Error(
-                    `Не удалось загрузить файлы: ${e.response?.data?.message || e.message}`
-                );
-            }
-
-            throw e;
-        }
-    }  */
-
-    async getFilesFromFolder(
-        userId: string,
-        orderId: string,
-        type: 'excel' | 'db'
-    ) {
-        const TOKEN = process.env.CLOUD_TOKEN;
-
-        const remotePath =
-            `disk:/shop/users/${userId}/orders/${orderId}/${type}`;
-
-        const allowedExtensions =
-            type === 'excel'
-                ? ['.xlsx', '.csv']
-                : ['.dbx', '.json', '.dbs'];
+        const remotePath = `disk:/shop/users/${userId}/orders/${orderId}/${type}`;
+        const allowedExtensions = type === 'excel' ? ['.xlsx', '.csv'] : ['.dbx', '.json', '.dbs'];
 
         try {
             const { data } = await axios.get(process.env.CLOUD_URL!, {
@@ -152,34 +93,21 @@ export class YandexCloudService {
             const result: Record<string, string> = {};
 
             for (const item of items) {
-                if (
-                    item.type === 'file' &&
-                    allowedExtensions.some(ext =>
-                        item.name.toLowerCase().endsWith(ext)
-                    )
-                ) {
-                    const fileResponse = await axios.get(item.file, {
-                        responseType: 'arraybuffer'
-                    });
-
-                    result[item.name] = Buffer
-                        .from(fileResponse.data)
-                        .toString('base64');
+                if (item.type === 'file' && allowedExtensions.some(ext => item.name.toLowerCase().endsWith(ext))) {
+                    // Возвращаем прямой URL для скачивания
+                    result[item.name] = item.file;
                 }
             }
 
             return result;
-
         } catch (e) {
             if (axios.isAxiosError(e) && e.response?.status === 404) {
                 return {};
             }
-
             throw e;
         }
-    } 
-    
-    // TODO: Создавать при смене статуса с новый на просмотренный
+    }
+
     // Метод для создания папок, если их нет
     async createRemoteFolderRecursive(remotePath) {
         const url = process.env.CLOUD_URL || 'noURL';
@@ -190,7 +118,7 @@ export class YandexCloudService {
         let currentPath = '';
 
         for (const folder of folders) {
-            // Постепенно наращиваем путь: "folder1", затем "folder1/folder2" и т.д.
+            // наращиваем путь
             currentPath += (currentPath ? '/' : '') + folder;
 
             try {
@@ -201,17 +129,15 @@ export class YandexCloudService {
                 // console.log(`Папка "${currentPath}" успешно создана.`);
             } catch (error) {
                 if (axios.isAxiosError(error)) {
-                    // 409 означает, что папка уже существует. Это нам подходит, идем дальше.
+                    // 409 означает, что папка уже существует
                     if (error.response?.status === 409) {
                         console.log(`Папка "${currentPath}" уже существует.`);
                         continue;
                     }
                     console.error(`Ошибка при создании "${currentPath}":`, error.response?.data);
-                    throw error; // Прекращаем, если возникла реальная ошибка
+                    throw error; 
                 }
             }
         }
     }
-
-
 }

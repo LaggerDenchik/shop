@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards, Req, Query, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query, Param, Res } from '@nestjs/common';
 import { ApiPlService } from './apiPl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Response } from 'express';
 
 @Controller('planplace')
 export class ApiPlController {
@@ -36,14 +37,35 @@ export class ApiPlController {
     return { status: 'ok' };
   }
 
+
   @Get('project/:filename')
+  async getProject(
+    @Param('filename') filename: string,
+    @Res() res: Response
+  ) {
+    const buffer = await this.apiPlService.saveProject(filename);
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+
+    res.send(buffer);
+  }
+
+  /* @Get('project/:filename')
+async getProject(@Param('filename') filename: string) {
+  return this.apiPlService.saveProject(filename);
+} */
+
+  /* @Get('project/:filename')
   async getProject(@Param('filename') filename: string) {
     const buffer = await this.apiPlService.saveProject(filename);
 
     return {
-      filename: filename.replace('.dbs', '.zip'),
+      filename: filename.replace(/\.(dbs|dbx)$/i, '.zip'),
       file: buffer.toString('base64'),
     };
-  }
+  } */
 
 }

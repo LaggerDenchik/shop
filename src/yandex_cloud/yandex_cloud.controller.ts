@@ -18,20 +18,6 @@ export class YandexCloudController {
         return this.yandexService.createRemoteFolderRecursive(`shop/users/${path}`);
     }
 
-    /* @Post('load')
-    @UseInterceptors(FileInterceptor('file'))
-    async loadFile(@Body('userId') userId: string, @Body('orderId') id: string, @UploadedFile('file') file: Express.Multer.File) {
-        console.log(file)
-        if (!file) {
-            throw new Error('Файл не получен');
-        }
-        const fixedFileName = Buffer
-            .from(file.originalname, 'latin1')
-            .toString('utf8');
-        const path = `shop/users/${userId}/orders/${id}/${fixedFileName}`;
-        return this.yandexService.uploadFileToYandexDisk(path, file.buffer);
-    } */
-
     @Post('load')
     @UseInterceptors(FileInterceptor('file'))
     async loadFile(
@@ -43,13 +29,12 @@ export class YandexCloudController {
         if (!file) {
             throw new Error('Файл не получен');
         }
-
-        const fixedFileName = Buffer
-            .from(file.originalname, 'latin1')
-            .toString('utf8');
+        
+        const fixedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
         const path = `shop/users/${userId}/orders/${orderId}/${type}/${fixedFileName}`;
 
+        // Передаем бинарный буфер напрямую
         return this.yandexService.uploadFileToYandexDisk(path, file.buffer);
     }
 
@@ -66,16 +51,6 @@ export class YandexCloudController {
         return this.yandexService.deleteFileFromYandexDisk(path);
     }
 
-    /* @Get('get-folder-files')
-    async getFolderFiles(
-        @Query('userId') userId: string,
-        @Query('orderId') orderId: string
-    ) {
-
-        // Вызываем сервис для получения объекта с base64 файлами
-        return await this.yandexService.getFilesFromFolder(userId, orderId);
-    } */
-
     @Get('get-folder-files')
     async getFolderFiles(
         @Query('userId') userId: string,
@@ -84,6 +59,4 @@ export class YandexCloudController {
     ) {
         return this.yandexService.getFilesFromFolder(userId, orderId, type);
     }
-
-
 }
