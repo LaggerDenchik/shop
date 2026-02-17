@@ -14,8 +14,9 @@ export class YandexCloudController {
 
     @Put('create-folders')
     async createFolderPatch(@Query('path') path: string) {
+        const sanitizedPath = path.replace(/\.\.\//g, '').replace(/\/+/g, '/');
         console.log(path)
-        return this.yandexService.createRemoteFolderRecursive(`shop/users/${path}`);
+        return this.yandexService.createRemoteFolderRecursive(`shop/orders/${path}`);
     }
 
     @Post('load')
@@ -29,10 +30,10 @@ export class YandexCloudController {
         if (!file) {
             throw new Error('Файл не получен');
         }
-        
+
         const fixedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
-        const path = `shop/users/${userId}/orders/${orderId}/${type}/${fixedFileName}`;
+        const path = `shop/orders/${orderId}/${type}/${fixedFileName}`;
 
         // Передаем бинарный буфер напрямую
         return this.yandexService.uploadFileToYandexDisk(path, file.buffer);
@@ -46,7 +47,7 @@ export class YandexCloudController {
         @Query('fileName') fileName: string
     ) {
         const decodedFileName = decodeURIComponent(fileName);
-        const path = `shop/users/${userId}/orders/${id}/${type}/${decodedFileName}`;
+        const path = `shop/orders/${id}/${type}/${decodedFileName}`;
         console.log(path)
         return this.yandexService.deleteFileFromYandexDisk(path);
     }

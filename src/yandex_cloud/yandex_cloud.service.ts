@@ -80,7 +80,7 @@ export class YandexCloudService {
 
     async getFilesFromFolder(userId: string, orderId: string, type: 'excel' | 'db') {
         const TOKEN = process.env.CLOUD_TOKEN;
-        const remotePath = `disk:/shop/users/${userId}/orders/${orderId}/${type}`;
+        const remotePath = `disk:/shop/orders/${orderId}/${type}`;
         const allowedExtensions = type === 'excel' ? ['.xlsx', '.csv'] : ['.dbx', '.json', '.dbs'];
 
         try {
@@ -121,6 +121,10 @@ export class YandexCloudService {
             // наращиваем путь
             currentPath += (currentPath ? '/' : '') + folder;
 
+            if (currentPath === 'shop' || currentPath === 'shop/orders') {
+                continue;
+            }
+
             try {
                 await axios.put(url, null, {
                     params: { path: currentPath },
@@ -135,7 +139,7 @@ export class YandexCloudService {
                         continue;
                     }
                     console.error(`Ошибка при создании "${currentPath}":`, error.response?.data);
-                    throw error; 
+                    throw error;
                 }
             }
         }
