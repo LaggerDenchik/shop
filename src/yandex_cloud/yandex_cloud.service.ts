@@ -95,7 +95,9 @@ export class YandexCloudService {
             for (const item of items) {
                 if (item.type === 'file' && allowedExtensions.some(ext => item.name.toLowerCase().endsWith(ext))) {
                     // Возвращаем прямой URL для скачивания
-                    result[item.name] = item.file;
+                    // result[item.name] = item.file;
+                    result[item.name] =
+                        `${process.env.API_URL}/api/download-file?url=${encodeURIComponent(item.file)}`;
                 }
             }
 

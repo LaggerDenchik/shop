@@ -2,6 +2,7 @@ import { Controller, Put, Get, Post, Res, Delete, Query, Body, UploadedFile, Use
 import { YandexCloudService } from './yandex_cloud.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import axios from 'axios';
 
 @Controller('cloud')
 export class YandexCloudController {
@@ -59,5 +60,24 @@ export class YandexCloudController {
         @Query('type') type: 'excel' | 'db'
     ) {
         return this.yandexService.getFilesFromFolder(userId, orderId, type);
+    }
+
+    @Get('download-file')
+    async downloadFile(
+        @Query('path') path: string,
+        @Res() res: Response
+    ) {
+        const TOKEN = process.env.CLOUD_TOKEN;
+
+        const { data } = await axios.get(process.env.CLOUD_DOWNLOAD_URL!, {
+            params: { path },
+            headers: { Authorization: `OAuth ${TOKEN}` }
+        });
+
+        const downloadUrl = data.href;
+
+        const file = await axios.get(downloadUrl, { responseType: 'stream' });
+
+        file.data.pipe(res);
     }
 }
