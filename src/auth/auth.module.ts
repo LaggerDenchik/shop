@@ -10,7 +10,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { PassportModule } from '@nestjs/passport';
-// import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailVerification } from './entities/email-verification.entity';
 import { Role } from './entities/role.entity';
@@ -41,16 +41,16 @@ import { CabinetsService } from '../cabinets/cabinets.service';
     JwtStrategy, 
     JwtAuthGuard,
     LocalAuthGuard,
-    // GoogleStrategy,
-    // {
-    //   provide: 'GOOGLE_STRATEGY_CONFIG',
-    //   useFactory: (configService: ConfigService) => ({
-    //     clientID: configService.getOrThrow('GOOGLE_CLIENT_ID'),
-    //     clientSecret: configService.getOrThrow('GOOGLE_CLIENT_SECRET'),
-    //     callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
-    //   }),
-    //   inject: [ConfigService],
-    // }
+    GoogleStrategy,
+    {
+      provide: 'GOOGLE_STRATEGY_CONFIG',
+      useFactory: (configService: ConfigService) => ({
+        clientID: configService.getOrThrow('GOOGLE_CLIENT_ID'),
+        clientSecret: configService.getOrThrow('GOOGLE_CLIENT_SECRET'),
+        callbackURL: configService.getOrThrow('GOOGLE_CALLBACK_URL'),
+      }),
+      inject: [ConfigService],
+    }
   ],
   exports: [AuthService],
 })

@@ -1,15 +1,29 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
 import { CabinetsService } from '../cabinets/cabinets.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
   usersRepository: any;
-  constructor(private authService: AuthService, private cabinetsService: CabinetsService) {}
+  constructor(
+    private authService: AuthService,
+    private cabinetsService: CabinetsService,
+  ) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -34,10 +48,10 @@ export class AuthController {
     //   maxAge: 1000 * 60 * 60, // 1 час
     // });
 
-    // return { 
-    //   message: 'Logged in', 
+    // return {
+    //   message: 'Logged in',
     //   access_token, // с куки удалить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    //   user 
+    //   user
     // };
 
     return this.authService.login(req.user);
@@ -101,20 +115,20 @@ export class AuthController {
   //     guest: false,
   //   };
   // }
-  
+
   // ============== endpoint'ы для гугла =================
 
-  
-//   @Get('google')
-//   @UseGuards(AuthGuard('google'))
-//   async googleAuth() {
-//     // Инициирует аутентификацию через Google
-//   }
-  
-//   @Get('google/redirect')
-//   @UseGuards(AuthGuard('google'))
-//   async googleAuthRedirect(@Req() req, @Res() res) {
-//     const token = await this.authService.login(req.user);
-//     res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
-//   }
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  googleAuth() {
+    // redirect на Google автоматически через Passport
+  }
+
+  @Get('google/redirect')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    const token = await this.authService.login(req.user); // JWT
+    // редирект на фронт с токеном
+    res.redirect(`https://mgshop.by/login-success?token=${token.access_token}`);
+  }
 }
