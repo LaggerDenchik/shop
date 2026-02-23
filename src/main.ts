@@ -5,50 +5,31 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import * as path from 'path';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import cookieParser from 'cookie-parser';
-import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  app.use(cookieParser());  
+
+  app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
   });
 
   app.enableCors({
     origin: 
-    [
-      'http://localhost:4200', // локальный front
-      'http://shop.montegroup.by', // front старый
-      'https://shop.montegroup.by', // HTTPS версия
-      'http://mgshop.by', // front новый
-      'https://mgshop.by', // HTTPS версия
-      'http://45.87.219.107:8080', // backend
-    ]
-    ,methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH']
-    ,allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-    ,credentials: true
-    ,preflightContinue: false
-    ,optionsSuccessStatus: 204
+      [
+        'http://localhost:4200', // локальный front
+        'http://shop.montegroup.by', // front старый
+        'https://shop.montegroup.by', // HTTPS версия
+        'http://mgshop.by', // front новый
+        'https://mgshop.by', // HTTPS версия
+        'http://45.87.219.107:8080', // backend
+      ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+    credentials: true,
+    exposedHeaders: ['Set-Cookie'],
   });
-
-  // app.use(cookieParser());  
-
-  // app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {
-  //   prefix: '/uploads/',
-  // });
-
-  // app.enableCors({
-  //   origin: [
-  //     'http://localhost:4200',
-  //     'http://shop.montegroup.by',
-  //     'https://shop.montegroup.by',
-  //     'http://45.87.219.107:8080',
-  //   ],
-  //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
-  //   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
-  //   credentials: true,
-  //   exposedHeaders: ['Set-Cookie'],
-  // });
 
   app.useGlobalPipes(new ValidationPipe());
   app.setGlobalPrefix('api');
