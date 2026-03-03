@@ -9,7 +9,7 @@ import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { EmailVerification } from './entities/email-verification.entity';
 import * as nodemailer from 'nodemailer';
-// import { TokenPayload } from './interfaces/token-payload.interface';
+import { TokenPayload } from './interfaces/token-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -176,26 +176,11 @@ export class AuthService {
     };
   }
 
-  async validateLogin(login: string, password: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({
-      where: [{ email: login }, { phone: login }],
-      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt', 'roleId'],
-    });
-
-    if (!user) return null;
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    return isMatch ? user : null;
-  }
-
   // async validateLogin(login: string, password: string): Promise<User | null> {
-  //   const user = await this.usersRepository
-  //     .createQueryBuilder('user')
-  //     .leftJoinAndSelect('user.role', 'role')
-  //     .leftJoinAndSelect('role.permissions', 'rolePermissions')
-  //     .leftJoinAndSelect('user.permissions', 'userPermissions')
-  //     .where('user.email = :login OR user.phone = :login', { login })
-  //     .getOne();
+  //   const user = await this.usersRepository.findOne({
+  //     where: [{ email: login }, { phone: login }],
+  //     select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt', 'roleId'],
+  //   });
 
   //   if (!user) return null;
 
@@ -203,17 +188,32 @@ export class AuthService {
   //   return isMatch ? user : null;
   // }
 
-  async validateUserById(userId: string) {
-    return this.usersRepository.findOne({ where: { id: userId } });
+  async validateLogin(login: string, password: string): Promise<User | null> {
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'rolePermissions')
+      .leftJoinAndSelect('user.permissions', 'userPermissions')
+      .where('user.email = :login OR user.phone = :login', { login })
+      .getOne();
+
+    if (!user) return null;
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    return isMatch ? user : null;
   }
 
-  // async validateUserById(userId: string): Promise<User | null> {
-  //   const user = await this.usersRepository.findOne({
-  //     where: { id: userId },
-  //     relations: ['role', 'role.permissions', 'permissions'],
-  //   });
-  //   return user;
+  // async validateUserById(userId: string) {
+  //   return this.usersRepository.findOne({ where: { id: userId } });
   // }
+
+  async validateUserById(userId: string): Promise<User | null> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['role', 'role.permissions', 'permissions'],
+    });
+    return user;
+  }
   
   async login(user: User) {
     const userWithRelations = await this.usersRepository.findOne({
