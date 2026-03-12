@@ -20,9 +20,7 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('auth')
 export class AuthController {
   usersRepository: any;
-  constructor(
-    private authService: AuthService,
-  ) {}
+  constructor(private authService: AuthService, private cabinetsService: CabinetsService) { }
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -32,23 +30,21 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req, @Res({ passthrough: true }) res: Response) {
-    const { access_token, user } = await this.authService.login(req.user);
+  async login(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const data = await this.authService.login(req.user);
 
-    // Сохраняем JWT в httpOnly cookie
-    res.cookie('jwt', access_token, {
+    res.cookie('jwt', data.access_token, {
       httpOnly: true,
-      secure: true, // true если https
+      secure: true,
       sameSite: 'none',
-      domain: 'mgshop.by',
       path: '/',
       maxAge: 1000 * 60 * 60, // 1 час
     });
 
-    return {
-      message: 'Logged in',
-      user,
-    };
+    return data;
   }
 
   @Post('send-verification-code')
@@ -72,58 +68,77 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
+    console.log("Logged out...");
     // Удаляем cookie
     res.clearCookie('jwt', {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: 'none',
-      domain: 'mgshop.by',
       path: '/',
     });
 
     return { message: 'Logged out' };
   }
 
-  /** Silent check + создание guest, если нет пользователя */
   @Get('me')
-  async getProfile(@Req() req) {
-    const user = req.user;
-
-    if (!user) {
-      // Просто возвращаем "виртуального" гостя
-      return {
-        id: null,
-        fullName: 'Гость',
-        type: 'guest',
-        roleName: null,
-        permissions: [],
-        guest: true,
-      };
-    }
-
-    return {
-      id: user.id,
-      fullName: user.fullName,
-      type: user.type,
-      roleName: user.role?.name || user.role?.tag,
-      permissions: user.permissions?.map(p => p.tag) || [],
-      guest: false,
-    };
+  @UseGuards(AuthGuard('jwt'))
+  getProfile(@Req() req) {
+    return req.user;
   }
 
-  // ============== endpoint'ы для гугла =================
+  /** Silent check + создание guest, если нет пользователя */
+  // @Get('me')
+  // async getProfile(@Req() req) {
+  //   const user = req.user;
 
+  //   if (!user) {
+  //     // Просто возвращаем "виртуального" гостя
+  //     return {
+  //       id: null,
+  //       fullName: 'Гость',
+  //       type: 'guest',
+  //       roleName: null,
+  //       permissions: [],
+  //       guest: true,
+  //     };
+  //   }
+
+  //   return {
+  //     id: user.id,
+  //     fullName: user.fullName,
+  //     type: user.type,
+  //     roleName: user.role?.name || user.role?.tag,
+  //     permissions: user.permissions?.map(p => p.tag) || [],
+  //     guest: false,
+  //   };
+  // }
+
+  // ============== endpoint'ы для гугла =================
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  googleAuth() {
-    // redirect на Google автоматически через Passport
+  async googleAuth() {
+    // Инициирует аутентификацию через Google
   }
 
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res) {
-    const token = await this.authService.login(req.user); // JWT
-    // редирект на фронт с токеном
-    res.redirect(`https://mgshop.by/login-success?token=${token.access_token}`);
+    const user = await this.authService.validateOrCreateUser({
+      email: req.user.email,
+      fullName: req.user.fullName,
+      provider: 'google'
+    });
+
+    const tokenData = await this.authService.login(user);
+
+    res.cookie('jwt', tokenData.access_token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax', 
+      path: '/',
+      maxAge: 1000 * 60 * 60 // 1 час
+    });
+
+    res.redirect('https://mgshop.by/login-success');
   }
 }
