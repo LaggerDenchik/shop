@@ -1,15 +1,16 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';  
+import { EntityManager, Repository } from 'typeorm';
+import { User } from './entities/user.entity';
 import { Role } from './entities/role.entity';
 import { Organization } from './entities/organization.entity';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { EmailVerification } from './entities/email-verification.entity';
 import * as nodemailer from 'nodemailer';
-// import { TokenPayload } from './interfaces/token-payload.interface';
+import { TokenPayload } from './interfaces/token-payload.interface';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class AuthService {
@@ -19,23 +20,21 @@ export class AuthService {
 
     @InjectRepository(Organization)
     private readonly orgRepository: Repository<Organization>,
-    
+
     @InjectRepository(Role)
     private readonly rolesRepository: Repository<Role>,
-    
+
     @InjectRepository(EmailVerification)
     private readonly verificationRepository: Repository<EmailVerification>,
 
     private readonly jwtService: JwtService,
-  ) {}
+    private dataSource: DataSource,
+  ) { }
 
-  async sendVerificationCode(email: string): Promise<void> {
-    const user = await this.usersRepository.findOne({ where: { email } });
-    if (!user) throw new BadRequestException('Пользователь не найден');
-    if (user.isEmailVerified) throw new BadRequestException('Email уже подтверждён');
+  async sendVerificationCode(email: string, manager?: EntityManager): Promise<void> {
+    const repo = manager ? manager.getRepository(EmailVerification) : this.verificationRepository;
 
-    // Проверка на существующий код
-    const existing = await this.verificationRepository.findOne({
+    const existing = await repo.findOne({
       where: { email },
       order: { createdAt: 'DESC' },
     });
@@ -47,8 +46,8 @@ export class AuthService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    const record = this.verificationRepository.create({ email, code, expiresAt });
-    await this.verificationRepository.save(record);
+    const record = repo.create({ email, code, expiresAt });
+    await repo.save(record);
 
     await this.sendEmail(email, code);
   }
@@ -81,21 +80,21 @@ export class AuthService {
     await this.sendVerificationCode(email);
   }
 
-  private async sendEmail(email: string, code: string) {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true', // true для SSL (465)
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false, // ТОЛЬКО ПОКА НЕТ СЕРТИФИКАТА
-      },
-    });
+  private transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
 
-    await transporter.sendMail({
+  private async sendEmail(email: string, code: string) {
+    await this.transporter.sendMail({
       from: `"Monte Group" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Подтверждение электронной почты',
@@ -121,66 +120,77 @@ export class AuthService {
     const existing = await this.usersRepository.findOne({
       where: [{ email }, { phone }],
     });
-    if (existing) throw new ConflictException('Пользователь уже существует');
 
-    let organizationId: string | null = null;
-    let role: Role | undefined;
+    if (existing) {
+      throw new ConflictException('Пользователь уже существует');
+    }
 
-    if (type === 'organization') {
-      if (!organizationName) {
-        throw new BadRequestException('Не указано название организации');
+    return this.dataSource.transaction(async (manager) => {
+      let organizationId: string | null = null;
+
+      let role: Role | null = null;
+
+      if (type === 'organization') {
+        if (!organizationName) {
+          throw new BadRequestException('Не указано название организации');
+        }
+
+        const org = manager.create(Organization, {
+          name: organizationName,
+          representative: representative ?? fullName,
+          unp,
+          email,
+          phone,
+        });
+
+        const savedOrg = await manager.save(org);
+        organizationId = savedOrg.id;
+
+        role = await manager.findOne(Role, {
+          where: { name: 'org_admin' },
+        });
+      } else {
+        role = await manager.findOne(Role, {
+          where: { name: 'customer' },
+        });
       }
 
-      const org = this.orgRepository.create({
-        name: organizationName,
-        representative: representative ?? fullName,
-        unp,
+      if (!role) {
+        throw new InternalServerErrorException('Роль не найдена');
+      }
+
+      const user = manager.create(User, {
         email,
         phone,
+        password,
+        fullName,
+        type,
+        organizationId,
+        role,
+        isEmailVerified: false,
+        isVerified: false,
       });
 
-      const savedOrg = await this.orgRepository.save(org);
-      organizationId = savedOrg.id;
+      await manager.save(user);
 
-      role = await this.rolesRepository.findOne({
-        where: { name: 'org_admin' },
-      }) ?? undefined;
-    } else {
-      role = await this.rolesRepository.findOne({
-        where: { name: 'customer' },
-      }) ?? undefined;
-    }
+      if (email) {
+        await this.sendVerificationCode(email, manager);
+      }
 
-    if (!role) {
-      throw new InternalServerErrorException('Роль не найдена');
-    }
-
-    const user = this.usersRepository.create({
-      email,
-      phone,
-      password,
-      fullName,
-      type,
-      organizationId,
-      role,
-      isEmailVerified: false,
-      isVerified: false,
+      return {
+        message: 'Регистрация успешна. Подтвердите email, код отправлен на почту.',
+      };
     });
-
-    await this.usersRepository.save(user);
-
-    await this.sendVerificationCode(user.email);
-
-    return {
-      message: 'Регистрация успешна. Подтвердите email, код отправлен на почту.',
-    };
   }
 
   async validateLogin(login: string, password: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({
-      where: [{ email: login }, { phone: login }],
-      select: ['id', 'email', 'phone', 'password', 'fullName', 'type', 'createdAt', 'roleId'],
-    });
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'rolePermissions')
+      .leftJoinAndSelect('user.permissions', 'userPermissions')
+      .where('user.email = :login OR user.phone = :login', { login })
+      .getOne();
 
     if (!user) return null;
 
@@ -188,140 +198,72 @@ export class AuthService {
     return isMatch ? user : null;
   }
 
-  // async validateLogin(login: string, password: string): Promise<User | null> {
-  //   const user = await this.usersRepository
-  //     .createQueryBuilder('user')
-  //     .leftJoinAndSelect('user.role', 'role')
-  //     .leftJoinAndSelect('role.permissions', 'rolePermissions')
-  //     .leftJoinAndSelect('user.permissions', 'userPermissions')
-  //     .where('user.email = :login OR user.phone = :login', { login })
-  //     .getOne();
-
-  //   if (!user) return null;
-
-  //   const isMatch = await bcrypt.compare(password, user.password);
-  //   return isMatch ? user : null;
-  // }
-
-  async validateUserById(userId: string) {
-    return this.usersRepository.findOne({ where: { id: userId } });
+  async validateUserById(userId: string): Promise<User | null> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['role', 'role.permissions', 'permissions'],
+    });
+    return user;
   }
 
-  // async validateUserById(userId: string): Promise<User | null> {
-  //   const user = await this.usersRepository.findOne({
-  //     where: { id: userId },
-  //     relations: ['role', 'role.permissions', 'permissions'],
-  //   });
-  //   return user;
-  // }
-  
   async login(user: User) {
-    const userWithRelations = await this.usersRepository.findOne({
+    const userWithPermissions = await this.usersRepository.findOne({
       where: { id: user.id },
-      relations: ['role', 'role.permissions'], 
+      relations: ['role', 'role.permissions', 'permissions'],
     });
-    
 
-    if (!userWithRelations) {
+    if (!userWithPermissions) {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    if (!userWithRelations.isEmailVerified) {
+    if (!userWithPermissions.isEmailVerified) {
       throw new ForbiddenException('Email не подтверждён');
     }
 
-    let userType = 'customer';
+    const role = userWithPermissions.role;
 
-    if (
-      userWithRelations.role?.name === 'org_admin' ||
-      userWithRelations.role?.name === 'org_user'
-    ) {
-      userType = 'organization';
-    } else if (userWithRelations.role?.name?.includes('admin')) {
-      userType = 'admin';
-    }
+    const userType =
+      role?.name === 'org_admin' || role?.name === 'org_user'
+        ? 'organization'
+        : role?.name?.includes('admin')
+          ? 'admin'
+          : 'customer';
 
-    const permissions =
-      userWithRelations.role?.permissions?.map(p => p.tag) ?? [];
-    userWithRelations.permissions =userWithRelations.role?.permissions ?? [];
+    const rolePerms = role?.permissions?.map((p) => p.tag) ?? [];
+    const userPerms = userWithPermissions.permissions?.map((p) => p.tag) ?? [];
 
-    const payload = {
-      sub: userWithRelations.id,
-      email: userWithRelations.email,
+    const mergedPermissions = [...new Set([...rolePerms, ...userPerms])];
+
+    const payload: TokenPayload = {
+      sub: userWithPermissions.id,
+      email: userWithPermissions.email,
       type: userType,
-      name: userWithRelations.fullName,
-      role: userWithRelations.role?.name,
+      name: userWithPermissions.fullName,
+      role: role?.name ?? null,
     };
 
+    const accessToken = this.jwtService.sign(payload);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
       user: {
-        id: userWithRelations.id,
-        email: userWithRelations.email,
-        fullName: userWithRelations.fullName,
-        phone: userWithRelations.phone,
-        roleId: userWithRelations.role?.id,
-        roleName: userWithRelations.role?.name,
-        permissions,
-        createdAt: userWithRelations.createdAt,
+        id: userWithPermissions.id,
+        email: userWithPermissions.email,
+        fullName: userWithPermissions.fullName,
+        phone: userWithPermissions.phone,
+        roleId: role?.id ?? null,
+        roleName: role?.name ?? null,
+        permissions: mergedPermissions,
+        createdAt: userWithPermissions.createdAt,
         type: userType,
       },
     };
   }
 
-  // async login(user: User) {
-  //   const role = user.roleId
-  //     ? await this.rolesRepository.findOne({
-  //         where: { id: user.roleId },
-  //         relations: ['permissions'],
-  //       })
-  //     : null;
-
-  //   const userWithPermissions = await this.usersRepository.findOne({
-  //     where: { id: user.id },
-  //     relations: ['role', 'role.permissions', 'permissions'],
-  //   });
-
-  //   if (!userWithPermissions) throw new NotFoundException('Пользователь не найден');
-  //   if (!userWithPermissions.isEmailVerified) throw new ForbiddenException('Email не подтверждён');
-
-  //   const userType = role?.name === 'org_admin' || role?.name === 'org_user'
-  //     ? 'organization'
-  //     : role?.name?.includes('admin')
-  //       ? 'admin'
-  //       : 'customer';
-
-  //   const rolePerms = role?.permissions?.map(p => p.tag) || [];
-  //   const userPerms = userWithPermissions.permissions?.map(p => p.tag) || [];
-  //   const mergedPermissions = Array.from(new Set([...rolePerms, ...userPerms]));
-
-  //   const payload: TokenPayload = {
-  //     sub: user.id,
-  //     email: user.email,
-  //     type: userType,
-  //     name: user.fullName,
-  //   };
-
-  //   return {
-  //     access_token: this.jwtService.sign(payload),
-  //     user: {
-  //       id: user.id,
-  //       email: user.email,
-  //       fullName: user.fullName,
-  //       phone: user.phone,
-  //       roleId: role?.id || null,
-  //       roleName: role?.name || null,
-  //       permissions: mergedPermissions,
-  //       createdAt: user.createdAt,
-  //       type: userType,
-  //     },
-  //   };
-  // }
-
   async validateOrCreateUser(profile: {
-    email: string; 
-    fullName: string; 
-    provider?: string; 
+    email: string;
+    fullName: string;
+    provider?: string;
   }) {
     let user = await this.usersRepository.findOne({ where: { email: profile.email } });
 

@@ -5,11 +5,12 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
 import { CabinetsService } from '../cabinets/cabinets.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
   usersRepository: any;
-  constructor(private authService: AuthService, private cabinetsService: CabinetsService) {}
+  constructor(private authService: AuthService, private cabinetsService: CabinetsService) { }
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -21,26 +22,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Request() req,
-    // @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response
   ) {
-    const { access_token, user } = await this.authService.login(req.user);
+    const data = await this.authService.login(req.user);
 
-    // Сохраняем JWT в httpOnly cookie
-    // res.cookie('jwt', access_token, {
-    //   httpOnly: true,
-    //   secure: false,           // true если https
-    //   sameSite: 'lax' ,
-    //   path: '/',
-    //   maxAge: 1000 * 60 * 60, // 1 час
-    // });
+    res.cookie('jwt', data.access_token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 1000 * 60 * 60, // 1 час
+    });
 
-    // return { 
-    //   message: 'Logged in', 
-    //   access_token, // с куки удалить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    //   user 
-    // };
-
-    return this.authService.login(req.user);
+    return data;
   }
 
   @Post('send-verification-code')
@@ -64,15 +58,22 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
+    console.log("Logged out...");
     // Удаляем cookie
-    // res.clearCookie('jwt', {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: 'lax',
-    //   path: '/',
-    // });
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
 
     return { message: 'Logged out' };
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  getProfile(@Req() req) {
+    return req.user;
   }
 
   /** Silent check + создание guest, если нет пользователя */
@@ -101,20 +102,33 @@ export class AuthController {
   //     guest: false,
   //   };
   // }
-  
-  // ============== endpoint'ы для гугла =================
 
-  
-//   @Get('google')
-//   @UseGuards(AuthGuard('google'))
-//   async googleAuth() {
-//     // Инициирует аутентификацию через Google
-//   }
-  
-//   @Get('google/redirect')
-//   @UseGuards(AuthGuard('google'))
-//   async googleAuthRedirect(@Req() req, @Res() res) {
-//     const token = await this.authService.login(req.user);
-//     res.redirect(`http://localhost:3000/login-success?token=${token.access_token}`);
-//   }
+  // ============== endpoint'ы для гугла =================
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // Инициирует аутентификацию через Google
+  }
+
+  @Get('google/redirect')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    const user = await this.authService.validateOrCreateUser({
+      email: req.user.email,
+      fullName: req.user.fullName,
+      provider: 'google'
+    });
+
+    const tokenData = await this.authService.login(user);
+
+    res.cookie('jwt', tokenData.access_token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax', 
+      path: '/',
+      maxAge: 1000 * 60 * 60 // 1 час
+    });
+
+    res.redirect('https://test.mgshop.by/login-success');
+  }
 }

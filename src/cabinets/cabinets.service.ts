@@ -21,7 +21,7 @@ export class CabinetsService {
 
     @InjectRepository(Permission)
     private readonly permissionsRepository: Repository<Permission>,
-  ) {}
+  ) { }
 
   async findUserById(id: string, relations: string[] = []) {
     return this.usersRepository.findOne({
@@ -77,11 +77,11 @@ export class CabinetsService {
       where: { id: userId },
       relations: ['organization'],
     });
-  
+
     if (!user?.organizationId) {
       throw new ForbiddenException('Вы не являетесь организацией');
     }
-  
+
     return this.usersRepository.find({
       where: {
         organizationId: user.organizationId,
@@ -124,9 +124,8 @@ export class CabinetsService {
 
     const role = await this.rolesRepository.findOne({
       where: { name: 'org_user' },
-      relations: ['role', 'role.permissions']
+      relations: ['permissions']
     });
-
     if (!role) {
       throw new NotFoundException('Роль org_user не найдена');
     }

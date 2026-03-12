@@ -20,6 +20,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @Get('dealer')
   async getDealerOrders(@Req() req) {
+    console.log("Запрос: ", req.user);
     if (!req.user.organizationId) {
       throw new ForbiddenException('Нет организации');
     }

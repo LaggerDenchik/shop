@@ -12,9 +12,9 @@ export class User {
   @Column({ name: 'email', type: 'varchar', length: 255, unique: true, nullable: false })
   email: string;
 
-  @Column({ name: 'password', type: 'varchar', length: 255, nullable: false })
+  @Column({ nullable: true })
   password: string;
-
+  
   @Column({ name: 'full_name', type: 'varchar', length: 255, nullable: true })
   fullName?: string;
 
@@ -41,7 +41,7 @@ export class User {
 
   @Column({ name: 'role_id', type: 'uuid', nullable: true })
   roleId?: string;
-  
+
   @ManyToOne(() => Role, (role) => role.users, { eager: true })
   // @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
@@ -54,13 +54,12 @@ export class User {
   @JoinColumn({ name: 'organization_id' })
   organization?: Organization;
 
-  // @ManyToMany(() => Permission, { eager: true })
-  // // @ManyToMany(() => Permission)
-  // @JoinTable({
-  //   name: 'user_permissions', 
-  //   joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-  //   inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
-  // })
+  @ManyToMany(() => Permission, { eager: true })
+  @JoinTable({
+    name: 'user_permissions',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
+  })
   permissions: Permission[];
 
   @BeforeInsert()
