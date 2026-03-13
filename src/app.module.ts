@@ -31,7 +31,7 @@ import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
         database: configService.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false,
-        migrationsRun: false, 
+        migrationsRun: true, 
         autoLoadEntities: true, 
         logging: configService.get('NODE_ENV') !== 'production',
         extra: {
