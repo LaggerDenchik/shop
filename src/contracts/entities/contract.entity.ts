@@ -98,10 +98,4 @@ export class Contract {
   @Column({ name: 'signed_org_file', type: 'varchar', length: 255, nullable: true })
   signedOrgFile?: string;
   lastSignedFile: string;
-
-  @Column({ nullable: true })
-  orgSignedFile?: string;
-
-  @Column({ nullable: true })
-  buyerSignedFile?: string;
 }

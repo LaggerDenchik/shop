@@ -300,11 +300,11 @@ export class ContractsService {
     }
 
     if (role === 'org') {
-      contract.orgSignedFile = file.path;
+      contract.signedOrgFile = file.path;
 
       if (isOrgActingAsBuyer) {
         // организация подписывает за себя и покупателя сразу
-        contract.buyerSignedFile = file.path;
+        contract.signedBuyerFile = file.path;
         contract.status = 'signed';
       } else {
         contract.status = 'signed_by_org';
@@ -315,7 +315,7 @@ export class ContractsService {
       if (contract.status !== 'signed_by_org') {
         throw new BadRequestException('Организация ещё не подписала');
       }
-      contract.buyerSignedFile = file.path;
+      contract.signedBuyerFile = file.path;
       contract.status = 'signed';
     }
 

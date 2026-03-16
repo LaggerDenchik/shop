@@ -39,10 +39,10 @@ export class ContractsController {
 
     let filePath: string;
 
-    if (contract.status === 'signed' && contract.buyerSignedFile) {
-      filePath = contract.buyerSignedFile;
-    } else if (contract.status === 'signed_by_org' && contract.orgSignedFile) {
-      filePath = contract.orgSignedFile;
+    if (contract.status === 'signed' && contract.signedBuyerFile) {
+      filePath = contract.signedBuyerFile;
+    } else if (contract.status === 'signed_by_org' && contract.signedOrgFile) {
+      filePath = contract.signedOrgFile;
     } else {
       filePath = await this.contractsService.generatePdf(id);
     }
