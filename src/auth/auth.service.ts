@@ -315,4 +315,15 @@ export class AuthService {
     if (!user) throw new NotFoundException('Пользователь не найден'); // теперь TS понимает, что user не null
     return user;
   }
+
+  mergePermissions(user: User) {
+    const rolePermissions = user.role?.permissions || [];
+    const userPermissions = user.permissions || [];
+
+    return Array.from(
+      new Map(
+        [...rolePermissions, ...userPermissions].map(p => [p.tag, p])
+      ).values()
+    );
+  }
 }
