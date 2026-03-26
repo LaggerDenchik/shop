@@ -82,12 +82,12 @@ export class CabinetsService {
       throw new ForbiddenException('Вы не являетесь организацией');
     }
 
-    return this.usersRepository.find({
+    const employees = await this.usersRepository.find({
       where: {
         organizationId: user.organizationId,
         roleId: '7fc971b0-50b4-4b00-be6b-bba457656160',
       },
-      relations: ['role', 'role.permissions'],
+      relations: ['role', 'role.permissions', 'permissions'], // добавить персональные права
       select: {
         id: true,
         email: true,
@@ -102,8 +102,31 @@ export class CabinetsService {
             groups: true,
           },
         },
+        permissions: {
+          id: true,
+          tag: true,
+          name: true,
+          groups: true,
+        },
       },
     });
+
+    // делаем merge: персональные + роль
+    return employees.map(emp => ({
+      ...emp,
+      permissions: this.mergePermissions(emp)
+    }));
+  }
+
+  mergePermissions(user: User) {
+    const rolePermissions = user.role?.permissions || [];
+    const userPermissions = user.permissions || [];
+
+    return Array.from(
+      new Map(
+        [...rolePermissions, ...userPermissions].map(p => [p.tag, p])
+      ).values()
+    );
   }
 
   // Создание сотрудника
