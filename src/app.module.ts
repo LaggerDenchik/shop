@@ -11,6 +11,8 @@ import { ApiPlModule } from 'planplace/apiPl.module';
 import { ContractsModule } from 'contracts/contracts.module';
 import { OrdersModule } from 'orders/orders.module';
 import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
+import { RequestsModule } from 'requests/requests.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -51,7 +53,9 @@ import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
     EmailVerification,
     PhoneVerificationModule,
     OrdersModule,
-    YandexCloudModule
+    YandexCloudModule,
+    RequestsModule,
+    ScheduleModule.forRoot()
   ],
 })
 export class AppModule {}
