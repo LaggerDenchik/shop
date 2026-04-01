@@ -4,7 +4,7 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   @MinLength(2, { message: 'Имя должно содержать минимум 2 символа' })
-  name?: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString()
@@ -12,9 +12,9 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\+?[1-9]\d{1,14}$/, { 
-    message: 'Номер телефона должен быть в международном формате' 
-  })
+  // @Matches(/^\+?[1-9]\d{1,14}$/, { 
+  //   message: 'Номер телефона должен быть в международном формате' 
+  // })
   phone?: string;
 
   @IsOptional()

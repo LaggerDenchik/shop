@@ -97,5 +97,9 @@ export class Contract {
 
   @Column({ name: 'signed_org_file', type: 'varchar', length: 255, nullable: true })
   signedOrgFile?: string;
+  
+  // @Column({ name: 'canceled', type: 'boolean', default: false})
+  // canceled?: boolean;
+  
   lastSignedFile: string;
 }

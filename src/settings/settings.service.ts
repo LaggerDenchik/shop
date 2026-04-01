@@ -64,8 +64,8 @@ export class SettingsService {
     }
 
     // Обновление остальных полей
-    if (updateSettingsDto.name !== undefined) {
-      user.fullName = updateSettingsDto.name;
+    if (updateSettingsDto.fullName !== undefined) {
+      user.fullName = updateSettingsDto.fullName;
     }
 
     if (updateSettingsDto.avatar !== undefined) {
