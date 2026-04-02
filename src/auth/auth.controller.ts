@@ -73,7 +73,24 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   getProfile(@Req() req) {
-    return req.user;
+    const user = req.user;
+
+    const rolePermissions = user.role?.permissions || [];
+    const userPermissions = user.permissions || [];
+
+    const mergedPermissions = [
+      ...rolePermissions,
+      ...userPermissions,
+    ];
+
+    const uniquePermissions = Array.from(
+      new Map(mergedPermissions.map(p => [p.tag, p])).values()
+    );
+
+    return {
+      ...user,
+      permissions: uniquePermissions,
+    };
   }
 
   /** Silent check + создание guest, если нет пользователя */
@@ -124,7 +141,7 @@ export class AuthController {
     res.cookie('jwt', tokenData.access_token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax', 
+      sameSite: 'lax',
       path: '/',
       maxAge: 1000 * 60 * 60 // 1 час
     });
