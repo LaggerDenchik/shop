@@ -1,4 +1,6 @@
-import { Controller, Get, Post, UseGuards, Req, Query, Body, Param, Res } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Req, Query, Body, Param, Res, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor, } from '@nestjs/platform-express';
+
 import { ApiPlService } from './apiPl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Response } from 'express';
@@ -53,19 +55,15 @@ export class ApiPlController {
     res.send(buffer);
   }
 
-  /* @Get('project/:filename')
-async getProject(@Param('filename') filename: string) {
-  return this.apiPlService.saveProject(filename);
-} */
-
-  /* @Get('project/:filename')
-  async getProject(@Param('filename') filename: string) {
-    const buffer = await this.apiPlService.saveProject(filename);
+  @Post('order')
+  @UseInterceptors(FileInterceptor('file'))
+  async getOrder(@Body() orderDto: any) {
+    console.log(orderDto);
 
     return {
-      filename: filename.replace(/\.(dbs|dbx)$/i, '.zip'),
-      file: buffer.toString('base64'),
+      status: 'success',
+      data: orderDto
     };
-  } */
+  }
 
 }
