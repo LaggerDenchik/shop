@@ -40,7 +40,7 @@ export class AuthService {
     });
 
     if (existing && existing.expiresAt > new Date()) {
-      throw new BadRequestException('Код уже был отправлен, попробуйте позже');
+      throw new BadRequestException('Код уже был отправлен, он действителен 15 миинут. Попробуйте позже');
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -217,7 +217,8 @@ export class AuthService {
     }
 
     if (!userWithPermissions.isEmailVerified) {
-      throw new ForbiddenException('Email не подтверждён');
+      await this.sendVerificationCode(user.email);
+      throw new ForbiddenException('Email не подтверждён. Код отправлен повторно');
     }
 
     const role = userWithPermissions.role;
