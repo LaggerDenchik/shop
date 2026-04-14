@@ -2,30 +2,38 @@ import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { Request, Response } from 'express';
 
+import { OrderFilesService } from 'order_files/order-files.service';
+import { CreateFilesDto } from '../order_files/dto/create-files.dto';
+import { DeleteFilesDto } from 'order_files/dto/delete-files.dto';
+
 
 @Injectable()
 export class YandexCloudService {
 
+    constructor(private readonly dataFiles: OrderFilesService,
+    ) { }
+
     async createFolderToYandexDisk(pathfolder: string) {
         const url = process.env.CLOUD_URL || 'noURL';
         try {
-            const response = await axios.put(url, null, {
+            await axios.put(url, null, {
                 params: { path: pathfolder },
-                headers: {
-                    Authorization: `OAuth ${process.env.CLOUD_TOKEN}`,
-                }
+                headers: { Authorization: `OAuth ${process.env.CLOUD_TOKEN}` }
             });
-            console.log(`Папка "${pathfolder}" создана.\n Статус: ${response.status}`);
         } catch (error) {
             if (axios.isAxiosError(error)) {
+                // 409 — "Conflict" (папка уже существует)
+                if (error.response?.status === 409) {
+                    return;
+                }
                 console.error('Ошибка создания папки:', error.response?.data);
-            } else {
-                console.error('Неизвестная ошибка:', error);
             }
         }
     }
 
-    async uploadFileToYandexDisk(pathfolder: string, fileBuffer: Buffer) {
+    async uploadFileToYandexDisk(pathfolder: string, fileBuffer: Buffer, userId: string, dto: CreateFilesDto) {
+        const folderPath = pathfolder.substring(0, pathfolder.lastIndexOf('/'));
+        await this.createRemoteFolderRecursive(folderPath);
         const url = `${process.env.CLOUD_URL}/upload`;
 
         try {
@@ -49,39 +57,57 @@ export class YandexCloudService {
                 }
             });
 
+            const savedFile = await this.dataFiles.createFileRecord(userId, dto);
             console.log('Файл успешно загружен:', pathfolder);
-
-        } catch (error) {
+            return savedFile;
+        } catch (error: unknown) {
             if (axios.isAxiosError(error)) {
-                console.error('Ошибка запроса URL:', error.response?.data);
+                console.error('Ошибка Яндекса:', error.response?.data || error.message);
             } else {
+                // Обработка обычных ошибок (не сетевых)
                 console.error('Неизвестная ошибка:', error);
             }
-        }
-    }
-
-    async deleteFileFromYandexDisk(remotePath: string) {
-        const url = process.env.CLOUD_URL || 'noURL';
-
-        try {
-            await axios.delete(url, {
-                params: {
-                    path: remotePath,
-                    permanently: true // true — удалить безвозвратно, false — поместить в корзину
-                },
-                headers: { Authorization: `OAuth ${process.env.CLOUD_TOKEN}` }
-            });
-            return { message: 'Файл успешно удален' };
-        } catch (error) {
-            console.error('Ошибка при удалении:', error.response?.data || error.message);
             throw error;
         }
     }
 
-    async getFilesFromFolder(userId: string, orderId: string, type: 'excel' | 'db') {
+    async deleteFileFromYandexDisk(remotePath: string, dto: DeleteFilesDto) {
+        const url = process.env.CLOUD_URL;
+        if (!url) throw new Error('CLOUD_URL не настроен в .env');
+
+        try {
+            // 1. Пытаемся удалить файл из облака
+            await axios.delete(url, {
+                params: { path: remotePath, permanently: true },
+                headers: { Authorization: `OAuth ${process.env.CLOUD_TOKEN}` }
+            });
+            // console.log(`Файл удален с Диска: ${remotePath}`);
+        } catch (error: any) {
+            const status = error.response?.status;
+
+            if (status === 404) {
+                // Файла уже нет в облаке
+                console.warn(`Файл ${remotePath} уже отсутствует на Диске.`);
+            } else {
+                console.error('Ошибка API Яндекса:', error.response?.data || error.message);
+                throw error;
+            }
+        }
+
+        try {
+            await this.dataFiles.deleteFileRecord(dto);
+            // console.log(`Запись о файле удалена из БД (ID: ${dto.originalName})`);
+            return { success: true };
+        } catch (dbError) {
+            console.error('Ошибка при удалении из БД:', dbError);
+            throw new Error('Файл удален из облака, но не удалось очистить БД');
+        }
+    }
+
+    async getFilesFromFolder(orderId: string, category: string) {
         const TOKEN = process.env.CLOUD_TOKEN;
-        const remotePath = `disk:/shop/orders/${orderId}/${type}`;
-        const allowedExtensions = type === 'excel' ? ['.xlsx', '.csv'] : ['.dbx', '.json', '.dbs'];
+        const remotePath = `disk:/shop/orders/${orderId}/${category}`;
+        const allowedExtensions = category === 'spetification' ? ['.xlsx', '.csv'] : ['.dbx', '.json', '.dbs'];
 
         try {
             const { data } = await axios.get(process.env.CLOUD_URL!, {
@@ -94,13 +120,9 @@ export class YandexCloudService {
 
             for (const item of items) {
                 if (item.type === 'file' && allowedExtensions.some(ext => item.name.toLowerCase().endsWith(ext))) {
-                    // Возвращаем прямой URL для скачивания
-                    // result[item.name] = item.file;
-                    result[item.name] =
-                        `${process.env.API_URL}/api/download-file?url=${encodeURIComponent(item.file)}`;
+                    result[item.name] = `api/cloud/download-file?url=${encodeURIComponent(item.file)}`;
                 }
             }
-
             return result;
         } catch (e) {
             if (axios.isAxiosError(e) && e.response?.status === 404) {

@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Requests } from './entities/requests.entity';
 import { Organization } from '../auth/entities/organization.entity';
-import { ApiPlService } from 'planplace/apiPl.service';
 import { User } from '../auth/entities/user.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateRequestDto } from './dto/create-requests.dto';
@@ -24,26 +23,26 @@ export class RequestsService {
 
     @InjectRepository(Requests)
     private requestsRepository: Repository<Requests>,
-
-    private apiPlService: ApiPlService
   ) { }
 
 
 
   async createRequest(userId: string, dto: CreateRequestDto) {
-    const existing = await this.requestsRepository.findOne({
+    const existingRequest = await this.requestsRepository.findOne({
       where: {
         orderId: dto.orderId,
-        status: RequestStatus.PENDING,
+        status: In([RequestStatus.PENDING, RequestStatus.COMPLETED]),
       },
     });
 
-    if (existing) {
-      // возврат на фронт
-      throw new BadRequestException('Уже существует активный запрос для этого заказа');
+    if (existingRequest) {
+      const isPending = existingRequest.status === RequestStatus.PENDING;
+      throw new BadRequestException(
+        isPending
+          ? 'Уже существует активный запрос для этого заказа'
+          : 'Уже существует завершенный запрос для этого заказа'
+      );
     }
-
-    console.log('orderId:', dto);
 
     const now = new Date();
     const expiresAt = new Date();
@@ -64,66 +63,9 @@ export class RequestsService {
       expiresAt: expiresAt,
     });
     newRequest.status = this.getRequestStatus(newRequest.user_confirmed, newRequest.org_confirmed);
-    console.log("dto.userConfirmed", dto.user_confirmed);
-    console.log("dto.orgConfirmed", dto.org_confirmed);
-    console.log('dto.userId', newRequest.userId);
     return await this.requestsRepository.save(newRequest);
   }
 
-
-
-  /* async viewRequests(orderId: number) {
-    const now = new Date();
-    const excludedStatuses = [
-      RequestStatus.EXPIRED,
-      RequestStatus.COMPLETED,
-      RequestStatus.CANCELLED,
-    ];
-
-    await this.requestsRepo
-      .createQueryBuilder()
-      .update(Requests)
-      .set({ status: RequestStatus.EXPIRED, updatedAt: now })
-      .where('orderId = :orderId', { orderId })
-      .andWhere('status NOT IN (:...excludedStatuses)', { excludedStatuses })
-      .andWhere('expiresAt < :now', { now })
-      .execute();
-
-    const requests = await this.requestsRepo.find({
-      where: { orderId },
-      relations: ['user', 'organization'],
-      // Только нужные поля
-      order: {
-        createdAt: 'DESC',
-      },
-      select: {
-        id: true,
-        status: true,
-        createdBy: true,
-        cause: true,
-        user_confirmed: true,
-        org_confirmed: true,
-        userConfirmedAt: true,
-        orgConfirmedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-        organization: {
-          id: true,
-          name: true,
-          shortname: true,
-          email: true,
-        }
-      },
-    });
-
-    return requests;
-  } */
 
   async viewRequests(orderId: number, page: number, limit: number, status: string, sort: any) {
     const now = new Date();
@@ -144,7 +86,7 @@ export class RequestsService {
       .andWhere('expiresAt < :now', { now })
       .execute();
 
-      const whereCondition: any = { orderId: orderId };
+    const whereCondition: any = { orderId: orderId };
 
     if (status && status !== 'all') {
       whereCondition.status = status;

@@ -11,10 +11,7 @@ export class RequestsCronService {
         private readonly requestsRepo: Repository<Requests>,
     ) { }
 
-    // @Cron('*/5 * * * *') в 5 мин
-    // @Cron('*/30 * * * * *') 30 сек
-    // @Cron('0 */30 * * * *') // 30 мин
-    @Cron('0 */30 * * * *') 
+    @Cron('0 0 */3 * * *')  // 3 ч
     async handleExpiredRequests() {
         console.log('⏰ CRON RUNNING');
         const now = new Date();
