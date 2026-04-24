@@ -6,5 +6,13 @@ export class UpdateOrgContractDto {
   contractDate?: string;
   price?: number;
 
+  orgData?: {
+    name?: string;
+    director?: string;
+    unp?: string;
+    address?: string;
+    phone?: string;
+  };
+
   status?: ContractStatus; 
 }

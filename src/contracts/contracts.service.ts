@@ -53,6 +53,7 @@ export class ContractsService {
 
   async updateOrg(id: string, dto: UpdateOrgContractDto) {
     const contract = await this.findOne(id);
+    console.log(dto)
 
     if (!contract) {
       throw new NotFoundException('Contract not found');
@@ -72,6 +73,15 @@ export class ContractsService {
 
     if (dto.contractDate !== undefined) {
       contract.contractDate = new Date(dto.contractDate);
+    }
+
+    if (dto?.orgData) {
+      const data = dto.orgData;
+      contract.orgName = data.name ?? contract.orgName;
+      contract.orgUNP = data.unp ?? contract.orgUNP;
+      contract.orgDirector = data.director ?? contract.orgDirector;
+      contract.orgAddress = data.address ?? contract.orgAddress;
+      contract.orgPhone = data.phone ?? contract.orgPhone;
     }
 
     // пересчёт остатка 
@@ -100,6 +110,7 @@ export class ContractsService {
       await this.orderRepo.save(order);
     }
 
+    console.log(contract);
     return this.repo.save(contract);
   }
 
@@ -211,7 +222,11 @@ export class ContractsService {
 
     if (!order) throw new NotFoundException('Order not found');
 
-    const org = order.dealerOrganization
+    let contract = await this.repo.findOne({
+      where: { orderId: order.externalId },
+    });
+
+    /* const org = order.dealerOrganization
       ? {
         name: order.dealerOrganization.name || '',
         legalForm: order.dealerOrganization.shortname || 'ООО',
@@ -232,10 +247,50 @@ export class ContractsService {
         index: '',
         phone: '',
       };
+ */
+    let org;
 
-    let contract = await this.repo.findOne({
-      where: { orderId: order.externalId },
-    });
+    if (contract && contract.status === 'org_confirmed') {
+      org = {
+        name: contract.orgName || '',
+        unp: contract.orgUNP || '',
+        director: contract.orgDirector || '',
+        address: contract.orgAddress || '',
+        phone: contract.orgPhone || '',
+        // Добавьте остальные поля, если они есть в сущности контракта
+        legalForm: contract.orgLegalForm || 'ООО',
+        city: contract.orgCity || '',
+        index: contract.orgIndex || '',
+      };
+    }
+    // Если контракта нет или статус не тот, берем данные из order (dealerOrganization)
+    else if (order.dealerOrganization) {
+      const dOrg = order.dealerOrganization;
+      org = {
+        name: dOrg.name || '',
+        legalForm: dOrg.shortname || 'ООО',
+        unp: dOrg.unp || '',
+        director: dOrg.ceo || '',
+        address: dOrg.address || '',
+        city: '',
+        index: '',
+        phone: dOrg.phone || '',
+      };
+    }
+    // Если и там пусто, отдаем пустые строки
+    else {
+      org = {
+        name: '',
+        legalForm: '',
+        unp: '',
+        director: '',
+        address: '',
+        city: '',
+        index: '',
+        phone: '',
+      };
+    }
+
 
     if (!contract) {
       contract = this.repo.create({

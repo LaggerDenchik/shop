@@ -27,8 +27,6 @@ export class YandexCloudController {
     @UseInterceptors(FileInterceptor('file'))
     async loadFile(
         @UploadedFile() file: Express.Multer.File,
-        @Body('folderNameOrder') folderNameOrder: string,
-        @Body('category') category: string,
         @Body('dto') dtoRaw: string, // Получаем как строку
         @Request() req
     ) {
@@ -37,8 +35,9 @@ export class YandexCloudController {
             throw new Error('Файл не получен');
         }
         const dto: CreateFilesDto = JSON.parse(dtoRaw);
+        console.log(dto)
         const fixedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const path = `shop/orders/${folderNameOrder}/${category}/${fixedFileName}`;
+        const path = `shop/orders/${dto.storagePath}/${fixedFileName}`;
 
         return this.yandexService.uploadFileToYandexDisk(path, file.buffer, req.user.id, dto);
     }
