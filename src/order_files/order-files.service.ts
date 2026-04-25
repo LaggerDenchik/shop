@@ -110,6 +110,15 @@ export class OrderFilesService {
     return dataFiles;
   }
 
+  async findOneByOrder(orderId: number, category: string) {
+    return await this.filesRepo.findOne({
+      where: {
+        orderId: orderId,
+        category: category
+      }
+    });
+  }
+
   async findAllByOrder(orderId: number, category: string) {
     return await this.filesRepo.find({
       where: {
@@ -118,5 +127,7 @@ export class OrderFilesService {
       }
     });
   }
+
+
 
 }
