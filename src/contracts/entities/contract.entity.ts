@@ -72,6 +72,9 @@ export class Contract {
 
   @Column({ name: 'contract_number', type: 'varchar', length: 50, nullable: true })
   contractNumber?: string;
+  
+  @Column({ name: 'include_appendix', type: 'boolean', nullable: true })
+  include_appendix?: boolean;
 
   @Column({ name: 'contract_date', type: 'date', nullable: true })
   contractDate?: Date;

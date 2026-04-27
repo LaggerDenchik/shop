@@ -13,7 +13,7 @@ import { OrdersModule } from 'orders/orders.module';
 import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
 import { RequestsModule } from 'requests/requests.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { OrderFilesModule } from 'order_files/order-files.module';
+import { OrderFilesModule } from './order_files/order-files.module';
 
 @Module({
   imports: [
