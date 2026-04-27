@@ -10,4 +10,5 @@ export class CreateContractDto {
   prepayment?: number;
   remainder?: number;
   specificationNumber?: string;
+  include_appendix?: boolean;
 }

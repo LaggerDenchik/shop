@@ -80,6 +80,10 @@ export class ContractsService {
       contract.contractDate = new Date(dto.contractDate);
     }
 
+    if (dto.include_appendix !== undefined) {
+      contract.include_appendix = dto.include_appendix;
+    }
+
     if (dto?.orgData) {
       const data = dto.orgData;
       contract.orgName = data.name ?? contract.orgName;
@@ -303,160 +307,164 @@ export class ContractsService {
     // await browser.close();
     // browser.close() вызовем в самом конце, чтобы переиспользовать для Excel
 
-    const dataFile = await this.dataFilesService.findOneByOrder(order.id, "spetification");
-    if (!dataFile) {
-      return ('Файл не найден в БД'); //FIXME:  new BadRequestException
-    }
+    let finalHtml;
+    if (contract.include_appendix) {
+      const dataFile = await this.dataFilesService.findOneByOrder(order.id, "spetification");
+      if (!dataFile) {
+        return ('Файл не найден в БД'); //FIXME:  new BadRequestException
+      }
 
-    const TOKEN = process.env.CLOUD_TOKEN;
-    const cloudPath = `disk:/shop/orders/${dataFile.storagePath}/${dataFile.originalName}`;
+      const TOKEN = process.env.CLOUD_TOKEN;
+      const cloudPath = `disk:/shop/orders/${dataFile.storagePath}/${dataFile.originalName}`;
 
-    const { data: cloudData } = await axios.get(process.env.CLOUD_URL!, {
-      params: { path: cloudPath },
-      headers: { Authorization: `OAuth ${TOKEN}` }
-    });
-
-    const downloadUrl = cloudData.href || cloudData.file;
-    if (!downloadUrl) throw new Error('Ссылка на скачивание не получена');
-    if (!dataFile) throw new NotFoundException('Файл спецификации не найден');
-
-    const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-
-    const workbookJs = new ExcelJS.Workbook();
-    await workbookJs.xlsx.load(response.data);
-
-    let excelHtmlAppends = '';
-
-    for (const worksheet of workbookJs.worksheets) {
-      const images = worksheet.getImages().map(img => {
-        const image = workbookJs.getImage(Number(img.imageId));
-        const base64Data = image?.buffer ? Buffer.from(image.buffer).toString('base64') : '';
-        // Определяем колонку и строку (поддержка разных версий ExcelJS)
-        const tl = img.range.tl;
-        const col = (tl as any).nativeCol ?? (tl as any).col;
-        const row = (tl as any).nativeRow ?? (tl as any).row;
-
-        return {
-          base64: image ? `data:image/${image.extension};base64,${base64Data}` : '',
-          col: Number(col) + 1,
-          row: Number(row) + 1
-        };
+      const { data: cloudData } = await axios.get(process.env.CLOUD_URL!, {
+        params: { path: cloudPath },
+        headers: { Authorization: `OAuth ${TOKEN}` }
       });
 
-      // 2. Определяем границы: учитываем и текст, и КАРТИНКИ
-      /* let lastCol = 0;
-      worksheet.eachRow({ includeEmpty: false }, (row) => {
-        row.eachCell({ includeEmpty: false }, (cell) => {
-          if (Number(cell.col) > lastCol) lastCol = Number(cell.col);
+      const downloadUrl = cloudData.href || cloudData.file;
+      if (!downloadUrl) throw new Error('Ссылка на скачивание не получена');
+      if (!dataFile) throw new NotFoundException('Файл спецификации не найден');
+
+      const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+
+      const workbookJs = new ExcelJS.Workbook();
+      await workbookJs.xlsx.load(response.data);
+
+      let excelHtmlAppends = '';
+
+      for (const worksheet of workbookJs.worksheets) {
+        const images = worksheet.getImages().map(img => {
+          const image = workbookJs.getImage(Number(img.imageId));
+          const base64Data = image?.buffer ? Buffer.from(image.buffer).toString('base64') : '';
+          // Определяем колонку и строку (поддержка разных версий ExcelJS)
+          const tl = img.range.tl;
+          const col = (tl as any).nativeCol ?? (tl as any).col;
+          const row = (tl as any).nativeRow ?? (tl as any).row;
+
+          return {
+            base64: image ? `data:image/${image.extension};base64,${base64Data}` : '',
+            col: Number(col) + 1,
+            row: Number(row) + 1
+          };
         });
-      });
 
-      // Если есть картинки дальше, чем текст — расширяем таблицу
-      images.forEach(img => {
-        if (img.col > lastCol) lastCol = img.col;
-      });
- */
-      const largeImageKeywords = ['вид', 'стена'];
-
-      const isGeneralViewPage = largeImageKeywords.some(keyword =>
-        worksheet.name.toLowerCase().includes(keyword)
-      );
-
-      if (isGeneralViewPage) {
-        let imagesHtml = '';
+        // 2. Определяем границы: учитываем и текст, и КАРТИНКИ
+        /* let lastCol = 0;
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            if (Number(cell.col) > lastCol) lastCol = Number(cell.col);
+          });
+        });
+  
+        // Если есть картинки дальше, чем текст — расширяем таблицу
         images.forEach(img => {
-          imagesHtml += `
+          if (img.col > lastCol) lastCol = img.col;
+        });
+   */
+        const largeImageKeywords = ['вид', 'стена'];
+
+        const isGeneralViewPage = largeImageKeywords.some(keyword =>
+          worksheet.name.toLowerCase().includes(keyword)
+        );
+
+        if (isGeneralViewPage) {
+          let imagesHtml = '';
+          images.forEach(img => {
+            imagesHtml += `
                 <div style="width: 100%; margin-bottom: 20px; text-align: center;">
                     <img src="${img.base64}" style="max-width: 100%; height: auto; display: block; margin: 0 auto; max-height: 280mm;">
                 </div>`;
-        });
+          });
 
-        excelHtmlAppends += `
+          excelHtmlAppends += `
         <div style="page-break-before: always; padding: 10mm;">
             <h2 style="text-align: center; font-family: Arial;">${worksheet.name}</h2>
             ${imagesHtml}
         </div>`;
-        continue;
-      }
-
-      // 3. ЛОГИКА ДЛЯ ТАБЛИЦЫ (Снова работает для всех остальных листов)
-      let lastCol = 0;
-      worksheet.eachRow({ includeEmpty: false }, (row) => {
-        row.eachCell({ includeEmpty: false }, (cell) => {
-          if (Number(cell.col) > lastCol) lastCol = Number(cell.col);
-        });
-      });
-      // Важно: проверяем и колонки картинок, чтобы таблица не была слишком узкой
-      images.forEach(img => { if (img.col > lastCol) lastCol = img.col; });
-      if (lastCol === 0) continue;
-
-      // 3. Формируем таблицу с ФИКСИРОВАННОЙ шириной (как в Excel)
-      let totalWidth = 0;
-      let colGroupHtml = '<colgroup>';
-      for (let i = 1; i <= lastCol; i++) {
-        const w = (worksheet.getColumn(i).width || 9.5) * 7.5; // Коэффициент перевода в px
-        totalWidth += w;
-        colGroupHtml += `<col style="width: ${w}px;">`;
-      }
-      colGroupHtml += '</colgroup>';
-
-      let tableHtml = `<table style="border-collapse: collapse; table-layout: fixed; width: ${totalWidth}px; font-family: Arial; background: white;">`;
-      tableHtml += colGroupHtml;
-
-      worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
-        tableHtml += `<tr style="height: auto;">`;
-
-        for (let colNumber = 1; colNumber <= lastCol; colNumber++) {
-          const cell = row.getCell(colNumber);
-
-          // Обработка объединений (важно для заголовков)
-          if (cell.isMerged && cell.address !== cell.master.address) continue;
-          let rSpan = 1, cSpan = 1;
-          if (cell.isMerged && (worksheet as any)._merges) {
-            const m = (worksheet as any)._merges[cell.master.address];
-            if (m) {
-              rSpan = m.bottom - m.top + 1;
-              cSpan = m.right - m.left + 1;
-            }
-          }
-
-          let cellStyle = `border: none; padding: 0.5px; font-size: 8.5pt; vertical-align: middle; word-wrap: break-word; overflow: hidden; box-sizing: border-box;`;
-
-          if (cell.alignment?.horizontal) cellStyle += `text-align: ${cell.alignment.horizontal};`;
-          if (cell.font?.bold) cellStyle += `font-weight: bold;`;
-          if (cell.fill && (cell.fill as any).fgColor?.argb) {
-            cellStyle += `background-color: #${(cell.fill as any).fgColor.argb.substring(2)};`;
-          }
-
-          // Проверяем, есть ли картинка в этой ячейке
-          const imgInCell = images.find(i => i.row === rowNumber && i.col === colNumber);
-          const imgHtml = imgInCell ? `<img src="${imgInCell.base64}" style="width: 100%; height: auto; display: block; max-height: 250px; object-fit: contain;">` : '';
-
-          let val = '';
-          if (cell.value) {
-            if (typeof cell.value === 'object' && 'result' in cell.value) val = cell.value.result?.toString() || '';
-            else val = cell.value.toString();
-          }
-
-          tableHtml += `<td rowspan="${rSpan}" colspan="${cSpan}" style="${cellStyle}">${imgHtml}${val}</td>`;
+          continue;
         }
-        tableHtml += `</tr>`;
-      });
-      tableHtml += `</table>`;
 
-      // 4. Масштабируем, чтобы влезло в A4
-      const scale = totalWidth > 750 ? (750 / totalWidth).toFixed(2) : '1';
+        // 3. ЛОГИКА ДЛЯ ТАБЛИЦЫ (Снова работает для всех остальных листов)
+        let lastCol = 0;
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            if (Number(cell.col) > lastCol) lastCol = Number(cell.col);
+          });
+        });
+        // Важно: проверяем и колонки картинок, чтобы таблица не была слишком узкой
+        images.forEach(img => { if (img.col > lastCol) lastCol = img.col; });
+        if (lastCol === 0) continue;
 
-      excelHtmlAppends += `
+        // 3. Формируем таблицу с ФИКСИРОВАННОЙ шириной (как в Excel)
+        let totalWidth = 0;
+        let colGroupHtml = '<colgroup>';
+        for (let i = 1; i <= lastCol; i++) {
+          const w = (worksheet.getColumn(i).width || 9.5) * 7.5; // Коэффициент перевода в px
+          totalWidth += w;
+          colGroupHtml += `<col style="width: ${w}px;">`;
+        }
+        colGroupHtml += '</colgroup>';
+
+        let tableHtml = `<table style="border-collapse: collapse; table-layout: fixed; width: ${totalWidth}px; font-family: Arial; background: white;">`;
+        tableHtml += colGroupHtml;
+
+        worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+          tableHtml += `<tr style="height: auto;">`;
+
+          for (let colNumber = 1; colNumber <= lastCol; colNumber++) {
+            const cell = row.getCell(colNumber);
+
+            // Обработка объединений (важно для заголовков)
+            if (cell.isMerged && cell.address !== cell.master.address) continue;
+            let rSpan = 1, cSpan = 1;
+            if (cell.isMerged && (worksheet as any)._merges) {
+              const m = (worksheet as any)._merges[cell.master.address];
+              if (m) {
+                rSpan = m.bottom - m.top + 1;
+                cSpan = m.right - m.left + 1;
+              }
+            }
+
+            let cellStyle = `border: none; padding: 0.5px; font-size: 8.5pt; vertical-align: middle; word-wrap: break-word; overflow: hidden; box-sizing: border-box;`;
+
+            if (cell.alignment?.horizontal) cellStyle += `text-align: ${cell.alignment.horizontal};`;
+            if (cell.font?.bold) cellStyle += `font-weight: bold;`;
+            if (cell.fill && (cell.fill as any).fgColor?.argb) {
+              cellStyle += `background-color: #${(cell.fill as any).fgColor.argb.substring(2)};`;
+            }
+
+            // Проверяем, есть ли картинка в этой ячейке
+            const imgInCell = images.find(i => i.row === rowNumber && i.col === colNumber);
+            const imgHtml = imgInCell ? `<img src="${imgInCell.base64}" style="width: 100%; height: auto; display: block; max-height: 250px; object-fit: contain;">` : '';
+
+            let val = '';
+            if (cell.value) {
+              if (typeof cell.value === 'object' && 'result' in cell.value) val = cell.value.result?.toString() || '';
+              else val = cell.value.toString();
+            }
+
+            tableHtml += `<td rowspan="${rSpan}" colspan="${cSpan}" style="${cellStyle}">${imgHtml}${val}</td>`;
+          }
+          tableHtml += `</tr>`;
+        });
+        tableHtml += `</table>`;
+
+        // 4. Масштабируем, чтобы влезло в A4
+        const scale = totalWidth > 750 ? (750 / totalWidth).toFixed(2) : '1';
+
+        excelHtmlAppends += `
     <div style="page-break-before: always; padding: 10mm 5mm;">
         <div style="zoom: ${scale}; transform-origin: top center;">
             <h2 style="text-align: center;">${worksheet.name}</h2>
             ${tableHtml}
         </div>
     </div>`;
+      }
+
+      finalHtml = templateHtml.replace('</body>', `${excelHtmlAppends}</body>`);
     }
 
-    const finalHtml = templateHtml.replace('</body>', `${excelHtmlAppends}</body>`);
 
     // 4. Генерация PDF через Puppeteer - ОПТИМИЗИРОВАНО
     browser = await puppeteer.launch({
@@ -471,9 +479,16 @@ export class ContractsService {
       page.setDefaultNavigationTimeout(60000);
 
       // Используем 'domcontentloaded', так как картинки в Base64 не грузятся извне
-      await page.setContent(finalHtml, {
-        waitUntil: 'domcontentloaded'
-      });
+      if (contract.include_appendix) {
+        await page.setContent(finalHtml, {
+          waitUntil: 'domcontentloaded'
+        });
+      } else {
+        await page.setContent(templateHtml, {
+          waitUntil: 'domcontentloaded'
+        });
+      }
+
 
       // Дополнительная небольшая пауза, чтобы тяжелый HTML отрендерился
       await new Promise(r => setTimeout(r, 1000));
@@ -622,6 +637,7 @@ export class ContractsService {
           price: contract.price,
           prepayment: contract.prepayment,
           remainder: contract.remainder,
+          includeAppendix: contract.include_appendix,
         },
       },
     };

@@ -5,6 +5,7 @@ export class UpdateOrgContractDto {
   prepayment?: number;
   contractDate?: string;
   price?: number;
+  include_appendix?: boolean;
 
   orgData?: {
     name?: string;
