@@ -11,6 +11,9 @@ import { ApiPlModule } from 'planplace/apiPl.module';
 import { ContractsModule } from 'contracts/contracts.module';
 import { OrdersModule } from 'orders/orders.module';
 import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
+import { RequestsModule } from 'requests/requests.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { OrderFilesModule } from './order_files/order-files.module';
 
 @Module({
   imports: [
@@ -31,7 +34,7 @@ import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
         database: configService.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false,
-        migrationsRun: false, 
+        migrationsRun: true, 
         autoLoadEntities: true, 
         logging: configService.get('NODE_ENV') !== 'production',
         extra: {
@@ -51,7 +54,10 @@ import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
     EmailVerification,
     PhoneVerificationModule,
     OrdersModule,
-    YandexCloudModule
+    YandexCloudModule,
+    RequestsModule,
+    ScheduleModule.forRoot(),
+    OrderFilesModule,
   ],
 })
 export class AppModule {}

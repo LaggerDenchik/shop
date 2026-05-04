@@ -5,6 +5,15 @@ export class UpdateOrgContractDto {
   prepayment?: number;
   contractDate?: string;
   price?: number;
+  include_appendix?: boolean;
+
+  orgData?: {
+    name?: string;
+    director?: string;
+    unp?: string;
+    address?: string;
+    phone?: string;
+  };
 
   status?: ContractStatus; 
 }

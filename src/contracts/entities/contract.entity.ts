@@ -72,6 +72,9 @@ export class Contract {
 
   @Column({ name: 'contract_number', type: 'varchar', length: 50, nullable: true })
   contractNumber?: string;
+  
+  @Column({ name: 'include_appendix', type: 'boolean', nullable: true })
+  include_appendix?: boolean;
 
   @Column({ name: 'contract_date', type: 'date', nullable: true })
   contractDate?: Date;
@@ -97,11 +100,9 @@ export class Contract {
 
   @Column({ name: 'signed_org_file', type: 'varchar', length: 255, nullable: true })
   signedOrgFile?: string;
+  
+  // @Column({ name: 'canceled', type: 'boolean', default: false})
+  // canceled?: boolean;
+  
   lastSignedFile: string;
-
-  @Column({ nullable: true })
-  orgSignedFile?: string;
-
-  @Column({ nullable: true })
-  buyerSignedFile?: string;
 }
