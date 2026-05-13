@@ -11,4 +11,5 @@ export class CreateContractDto {
   remainder?: number;
   specificationNumber?: string;
   include_appendix?: boolean;
+  template_html?: string;
 }

@@ -3,7 +3,7 @@ import { FileInterceptor, } from '@nestjs/platform-express';
 
 import { ApiPlService } from './apiPl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 @Controller('planplace')
 export class ApiPlController {
@@ -55,7 +55,7 @@ export class ApiPlController {
     res.send(buffer);
   }
 
-  @Post('order')
+  /* @Post('order')
   @UseInterceptors(FileInterceptor('file'))
   async getOrder(@Body() orderDto: any) {
     console.log(orderDto);
@@ -64,6 +64,19 @@ export class ApiPlController {
       status: 'success',
       data: orderDto
     };
+  } */
+  @Post('order')
+  async getOrder(@Req() req: Request, @Res() res: Response) {
+    // Данные будут приходить по кусочкам (chunks)
+    req.on('data', (chunk) => {
+      // Здесь можно обрабатывать данные по частям, 
+      // не загружая все 45МБ в память сразу
+      console.log('Получен кусок данных:', chunk.length);
+    });
+
+    req.on('end', () => {
+      res.status(200).send({ status: 'success' });
+    });
   }
 
 }
