@@ -84,6 +84,7 @@ export class ContractsController {
       },
     }),
   }))
+
   uploadSignedFile(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
@@ -97,5 +98,15 @@ export class ContractsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.contractsService.findOne(id);
+  }
+
+  @Post(':id/set-template')
+  @UseInterceptors(FileInterceptor('file')) // 'file' для случая с загрузкой файла
+  uploadTemplateHtml(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('html') html?: string, // Достаем строку, которую прислал ApiService
+  ) {
+    return this.contractsService.uploadTemplatehtml(id, file, html);
   }
 }

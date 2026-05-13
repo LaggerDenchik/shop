@@ -8,11 +8,11 @@ import { Order } from '../orders/entities/order.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
-import * as xlsx from 'xlsx'; // TODO: УДАЛИТЬ библиотеку
 import axios from 'axios';
 import { UpdateOrgContractDto } from './dto/update-org-contract.dto';
 import { OrderFilesService } from 'order_files/order-files.service';
 import * as ExcelJS from 'exceljs';
+import * as mammoth from 'mammoth';
 
 @Injectable()
 export class ContractsService {
@@ -133,95 +133,99 @@ export class ContractsService {
 
     return `Dogovor_${safeNumber}_${date}.pdf`;
   }
+  /*
+   async generatePdf(id: string): Promise<string> {
+      const contract = await this.findOne(id);
+      if (!contract) throw new NotFoundException('Contract not found');
+  
+      const order = await this.orderRepo.findOne({
+        where: { externalId: contract.orderId },
+        relations: ['dealerOrganization'],
+      });
+  
+      if (!order) throw new NotFoundException('Order not found');
+  
+      const org = order.dealerOrganization || {};
+  
+      const templateData = {
+        contractNumber: contract.contractNumber || '—',
+        buyerFullName: contract.buyerFullName || '—',
+        buyerPassportSeries: contract.buyerPassportSeries || '—',
+        buyerPassportNumber: contract.buyerPassportNumber || '—',
+        buyerPassportIssuedBy: contract.buyerPassportIssuedBy || '—',
+        buyerPassportIssueDate: contract.buyerPassportIssueDate
+          ? new Date(contract.buyerPassportIssueDate).toLocaleDateString('ru-RU')
+          : '—',
+        buyerAddress: contract.buyerAddress || '—',
+        buyerCity: contract.buyerCity || '—',
+        buyerIndex: contract.buyerIndex || '—',
+        buyerPhone: contract.buyerPhone || '—',
+        orgName: contract.orgName || org.name || '—',
+        orgLegalForm: contract.orgLegalForm || org.shortname || '—',
+        orgUNP: contract.orgUNP || org.unp || '—',
+        orgDirector: contract.orgDirector || org.ceo || '—',
+        orgAddress: contract.orgAddress || org.address || '—',
+        orgPhone: contract.orgPhone || org.phone || '—',
+        price: Number(contract.price ?? order.totalPrice ?? 0),
+        prepayment: Number(contract.prepayment ?? 0),
+        remainder: Number(contract.remainder ?? (contract.price ?? order.totalPrice ?? 0) - (contract.prepayment ?? 0)),
+      };
+  
+      const templatePath = path.join(__dirname, 'templates', 'contract-template.html');
+      let templateHtml = fs.readFileSync(templatePath, 'utf-8');
+  
+      const data = {
+        'НОМЕР': templateData.contractNumber,
+        'ФИО_ФИЗ': templateData.buyerFullName,
+        'СЕРИЯ_ФИЗ': templateData.buyerPassportSeries,
+        'НОМЕР_ПАСПОРТА_ФИЗ': templateData.buyerPassportNumber,
+        'КЕМ_ВЫДАН_ФИЗ': templateData.buyerPassportIssuedBy,
+        'ДАТА_ВЫДАЧИ_ФИЗ': templateData.buyerPassportIssueDate,
+        'АДРЕС_ФИЗ': templateData.buyerAddress,
+        'ГОРОД_ФИЗ': templateData.buyerCity,
+        'ИНДЕКС_ФИЗ': templateData.buyerIndex,
+        'ТЕЛЕФОН_ФИЗ': templateData.buyerPhone,
+        'НАЗВАНИЕ': templateData.orgName,
+        'ЮР_ФОРМА': templateData.orgLegalForm,
+        'УНП': templateData.orgUNP,
+        'ДИРЕКТОР': templateData.orgDirector,
+        'АДРЕС': templateData.orgAddress,
+        'ТЕЛЕФОН': templateData.orgPhone,
+        'ЦЕНА': templateData.price.toFixed(2),
+        'ПРЕДОПЛАТА': templateData.prepayment.toFixed(2),
+        'ОСТАТОК': templateData.remainder.toFixed(2),
+        'ЧИСЛО': new Date().getDate(),
+        'МЕСЯЦ': new Date().toLocaleString('ru-RU', { month: 'long' }),
+        'ГОД': new Date().getFullYear(),
+      };
+  
+      Object.keys(data).forEach((key) => {
+        templateHtml = templateHtml.replace(new RegExp(`{${key}}`, 'g'), data[key]);
+      });
+  
+      const pdfDir = path.join(__dirname, '..', 'uploads');
+      if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
+  
+      const pdfPath = path.join(pdfDir, `contract-${id}.pdf`);
+  
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
+      await page.setContent(templateHtml, { waitUntil: 'networkidle0' });
+      await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
+      await browser.close();
+  
+      contract.pdfFile = pdfPath;
+      await this.repo.save(contract);
+  
+      return pdfPath;
+    } 
+  */
 
-  /* async generatePdf(id: string): Promise<string> {
-    const contract = await this.findOne(id);
-    if (!contract) throw new NotFoundException('Contract not found');
 
-    const order = await this.orderRepo.findOne({
-      where: { externalId: contract.orderId },
-      relations: ['dealerOrganization'],
-    });
 
-    if (!order) throw new NotFoundException('Order not found');
-
-    const org = order.dealerOrganization || {};
-
-    const templateData = {
-      contractNumber: contract.contractNumber || '—',
-      buyerFullName: contract.buyerFullName || '—',
-      buyerPassportSeries: contract.buyerPassportSeries || '—',
-      buyerPassportNumber: contract.buyerPassportNumber || '—',
-      buyerPassportIssuedBy: contract.buyerPassportIssuedBy || '—',
-      buyerPassportIssueDate: contract.buyerPassportIssueDate
-        ? new Date(contract.buyerPassportIssueDate).toLocaleDateString('ru-RU')
-        : '—',
-      buyerAddress: contract.buyerAddress || '—',
-      buyerCity: contract.buyerCity || '—',
-      buyerIndex: contract.buyerIndex || '—',
-      buyerPhone: contract.buyerPhone || '—',
-      orgName: contract.orgName || org.name || '—',
-      orgLegalForm: contract.orgLegalForm || org.shortname || '—',
-      orgUNP: contract.orgUNP || org.unp || '—',
-      orgDirector: contract.orgDirector || org.ceo || '—',
-      orgAddress: contract.orgAddress || org.address || '—',
-      orgPhone: contract.orgPhone || org.phone || '—',
-      price: Number(contract.price ?? order.totalPrice ?? 0),
-      prepayment: Number(contract.prepayment ?? 0),
-      remainder: Number(contract.remainder ?? (contract.price ?? order.totalPrice ?? 0) - (contract.prepayment ?? 0)),
-    };
-
-    const templatePath = path.join(__dirname, 'templates', 'contract-template.html');
-    let templateHtml = fs.readFileSync(templatePath, 'utf-8');
-
-    const data = {
-      'НОМЕР': templateData.contractNumber,
-      'ФИО_ФИЗ': templateData.buyerFullName,
-      'СЕРИЯ_ФИЗ': templateData.buyerPassportSeries,
-      'НОМЕР_ПАСПОРТА_ФИЗ': templateData.buyerPassportNumber,
-      'КЕМ_ВЫДАН_ФИЗ': templateData.buyerPassportIssuedBy,
-      'ДАТА_ВЫДАЧИ_ФИЗ': templateData.buyerPassportIssueDate,
-      'АДРЕС_ФИЗ': templateData.buyerAddress,
-      'ГОРОД_ФИЗ': templateData.buyerCity,
-      'ИНДЕКС_ФИЗ': templateData.buyerIndex,
-      'ТЕЛЕФОН_ФИЗ': templateData.buyerPhone,
-      'НАЗВАНИЕ': templateData.orgName,
-      'ЮР_ФОРМА': templateData.orgLegalForm,
-      'УНП': templateData.orgUNP,
-      'ДИРЕКТОР': templateData.orgDirector,
-      'АДРЕС': templateData.orgAddress,
-      'ТЕЛЕФОН': templateData.orgPhone,
-      'ЦЕНА': templateData.price.toFixed(2),
-      'ПРЕДОПЛАТА': templateData.prepayment.toFixed(2),
-      'ОСТАТОК': templateData.remainder.toFixed(2),
-      'ЧИСЛО': new Date().getDate(),
-      'МЕСЯЦ': new Date().toLocaleString('ru-RU', { month: 'long' }),
-      'ГОД': new Date().getFullYear(),
-    };
-
-    Object.keys(data).forEach((key) => {
-      templateHtml = templateHtml.replace(new RegExp(`{${key}}`, 'g'), data[key]);
-    });
-
-    const pdfDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
-
-    const pdfPath = path.join(pdfDir, `contract-${id}.pdf`);
-
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    await page.setContent(templateHtml, { waitUntil: 'networkidle0' });
-    await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
-    await browser.close();
-
-    contract.pdfFile = pdfPath;
-    await this.repo.save(contract);
-
-    return pdfPath;
-  } */
 
   async generatePdf(id: string): Promise<string> {
     const contract = await this.findOne(id);
@@ -309,7 +313,7 @@ export class ContractsService {
 
     let finalHtml;
     if (contract.include_appendix) {
-      const dataFile = await this.dataFilesService.findOneByOrder(order.id, "spetification");
+      const dataFile = await this.dataFilesService.findOneByOrder(order.id, "speсification");
       if (!dataFile) {
         return ('Файл не найден в БД'); //FIXME:  new BadRequestException
       }
@@ -348,40 +352,29 @@ export class ContractsService {
             row: Number(row) + 1
           };
         });
-
-        // 2. Определяем границы: учитываем и текст, и КАРТИНКИ
-        /* let lastCol = 0;
-        worksheet.eachRow({ includeEmpty: false }, (row) => {
-          row.eachCell({ includeEmpty: false }, (cell) => {
-            if (Number(cell.col) > lastCol) lastCol = Number(cell.col);
-          });
-        });
-  
-        // Если есть картинки дальше, чем текст — расширяем таблицу
-        images.forEach(img => {
-          if (img.col > lastCol) lastCol = img.col;
-        });
-   */
         const largeImageKeywords = ['вид', 'стена'];
 
         const isGeneralViewPage = largeImageKeywords.some(keyword =>
           worksheet.name.toLowerCase().includes(keyword)
         );
+        if (worksheet.name.toLowerCase().includes("вид коммуникаций")) {
+          continue;
+        }
 
         if (isGeneralViewPage) {
           let imagesHtml = '';
           images.forEach(img => {
             imagesHtml += `
-                <div style="width: 100%; margin-bottom: 20px; text-align: center;">
-                    <img src="${img.base64}" style="max-width: 100%; height: auto; display: block; margin: 0 auto; max-height: 280mm;">
-                </div>`;
+                  <div style="width: 100%; margin-bottom: 20px; text-align: center;">
+                      <img src="${img.base64}" style="max-width: 100%; height: auto; display: block; margin: 0 auto; max-height: 280mm;">
+                  </div>`;
           });
 
           excelHtmlAppends += `
-        <div style="page-break-before: always; padding: 10mm;">
-            <h2 style="text-align: center; font-family: Arial;">${worksheet.name}</h2>
-            ${imagesHtml}
-        </div>`;
+          <div style="page-break-before: always; padding: 10mm;">
+              <h2 style="text-align: center; font-family: Arial;">${worksheet.name}</h2>
+              ${imagesHtml}
+          </div>`;
           continue;
         }
 
@@ -406,7 +399,7 @@ export class ContractsService {
         }
         colGroupHtml += '</colgroup>';
 
-        let tableHtml = `<table style="border-collapse: collapse; table-layout: fixed; width: ${totalWidth}px; font-family: Arial; background: white;">`;
+        let tableHtml = `<table style="border: none; table-layout: fixed; width: ${totalWidth}px; font-family: Arial; background: white;">`;
         tableHtml += colGroupHtml;
 
         worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
@@ -426,7 +419,19 @@ export class ContractsService {
               }
             }
 
-            let cellStyle = `border: none; padding: 0.5px; font-size: 8.5pt; vertical-align: middle; word-wrap: break-word; overflow: hidden; box-sizing: border-box;`;
+            let cellStyle = `padding-bottom: 0.5px; font-size: 8.5pt; vertical-align: middle; word-wrap: break-word; overflow: hidden; box-sizing: border-box;`;
+
+            const firstImageRow = images.length > 0
+              ? Math.min(...images.map(img => img.row))
+              : Infinity;
+
+            const borderThresholdRow = firstImageRow - 1;
+            const shouldHaveBorder = rowNumber >= borderThresholdRow;
+            if (shouldHaveBorder) {
+              cellStyle += `border: 1px solid #000;`;
+            } else {
+              cellStyle += `border: none;`;
+            }
 
             if (cell.alignment?.horizontal) cellStyle += `text-align: ${cell.alignment.horizontal};`;
             if (cell.font?.bold) cellStyle += `font-weight: bold;`;
@@ -454,17 +459,16 @@ export class ContractsService {
         const scale = totalWidth > 750 ? (750 / totalWidth).toFixed(2) : '1';
 
         excelHtmlAppends += `
-    <div style="page-break-before: always; padding: 10mm 5mm;">
-        <div style="zoom: ${scale}; transform-origin: top center;">
-            <h2 style="text-align: center;">${worksheet.name}</h2>
-            ${tableHtml}
-        </div>
-    </div>`;
+      <div style="page-break-before: always; padding: 10mm 5mm;">
+          <div style="zoom: ${scale}; transform-origin: top center;">
+              <h2 style="text-align: center;">${worksheet.name}</h2>
+              ${tableHtml}
+          </div>
+      </div>`;
       }
 
       finalHtml = templateHtml.replace('</body>', `${excelHtmlAppends}</body>`);
     }
-
 
     // 4. Генерация PDF через Puppeteer - ОПТИМИЗИРОВАНО
     browser = await puppeteer.launch({
@@ -489,7 +493,6 @@ export class ContractsService {
         });
       }
 
-
       // Дополнительная небольшая пауза, чтобы тяжелый HTML отрендерился
       await new Promise(r => setTimeout(r, 1000));
 
@@ -499,7 +502,7 @@ export class ContractsService {
         path: pdfPath,
         format: 'A4',
         printBackground: true,
-        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        margin: { top: '5mm', bottom: '10mm', left: '25mm', right: '5mm' },
         displayHeaderFooter: false
       });
 
@@ -680,4 +683,19 @@ export class ContractsService {
 
     return this.repo.save(contract);
   }
+
+  // contracts.service.ts
+async uploadTemplatehtml(contractId: string, templateHtmlFile?: Express.Multer.File, htmlFromParams?: string) {
+  const contract = await this.findOne(contractId);
+
+  if (templateHtmlFile) {
+    const result = await mammoth.convertToHtml({ buffer: templateHtmlFile.buffer });
+    contract.template_html = result.value;
+  } else if (htmlFromParams) {
+    contract.template_html = htmlFromParams;
+  }
+
+  return await this.repo.save(contract);
+}
+
 }
