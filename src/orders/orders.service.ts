@@ -19,9 +19,13 @@ export class OrdersService {
     private readonly userRepo: Repository<User>,
 
     private apiPlService: ApiPlService
-  ) {}
+  ) { }
 
-  async getOrdersByDealer(dealerOrgId: string) {
+  async getOrdersByDealer(
+    dealerOrgId: string,
+    page = 1,
+    limit = 10,
+  ) {
     const organization = await this.orgRepo.findOne({
       where: { id: dealerOrgId },
       select: ['email'],
@@ -31,32 +35,61 @@ export class OrdersService {
       throw new NotFoundException('Организация не найдена');
     }
 
-    return this.ordersRepo
+    const query = this.ordersRepo
       .createQueryBuilder('order')
-      .leftJoinAndSelect('order.dealerOrganization', 'dealerOrganization')
+      .leftJoinAndSelect(
+        'order.dealerOrganization',
+        'dealerOrganization'
+      )
       .where(
         `
-        order.dealer_org_id = :dealerOrgId
-        OR (
-          order.email = :orgEmail
-          AND order.dealer_org_id IS NULL
-        )
-        `,
+      order.dealer_org_id = :dealerOrgId
+      OR (
+        order.email = :orgEmail
+        AND order.dealer_org_id IS NULL
+      )
+      `,
         {
           dealerOrgId,
           orgEmail: organization.email,
         }
       )
-      .orderBy('order.createdAt', 'DESC')
+      .orderBy('order.createdAt', 'DESC');
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
       .getMany();
+
+    return {
+      items,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async getOrdersByCustomer(customerId: string) {
-    return this.ordersRepo.find({
+  async getOrdersByCustomer(
+    customerId: string,
+    page = 1,
+    limit = 10,
+  ) {
+    const [items, total] = await this.ordersRepo.findAndCount({
       where: { customerId },
       relations: ['customer'],
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      items,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getByExternalId(externalId: string, user: any) {
