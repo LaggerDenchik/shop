@@ -31,7 +31,7 @@ export class AuthController {
       secure: true,
       sameSite: 'none',
       path: '/',
-      maxAge: 1000 * 60 * 60, // 1 час
+      maxAge: 1000 * 60 * 60 * 24 * 3, // 3 дня
     });
 
     return data;
@@ -58,7 +58,6 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
-    console.log("Logged out...");
     // Удаляем cookie
     res.clearCookie('jwt', {
       httpOnly: true,
