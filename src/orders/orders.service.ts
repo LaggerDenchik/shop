@@ -41,6 +41,12 @@ export class OrdersService {
         'order.dealerOrganization',
         'dealerOrganization'
       )
+      .leftJoin('order.customer', 'customer')
+      .addSelect([
+        'customer.id', 
+        'customer.fullName',
+        'customer.email'
+      ]) 
       .where(
         `
       order.dealer_org_id = :dealerOrgId
