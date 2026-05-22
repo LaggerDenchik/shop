@@ -6,6 +6,7 @@ export class UpdateOrgContractDto {
   contractDate?: string;
   price?: number;
   include_appendix?: boolean;
+  template_html?: string;
 
   orgData?: {
     name?: string;
@@ -15,5 +16,5 @@ export class UpdateOrgContractDto {
     phone?: string;
   };
 
-  status?: ContractStatus; 
+  status?: ContractStatus;
 }

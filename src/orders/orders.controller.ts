@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards, ParseUUIDPipe, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards, ParseUUIDPipe, ForbiddenException, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post('sync')
   async syncOrders() {
@@ -13,21 +13,35 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard)
   @Get('my')
-  getMyOrders(@Req() req) {
-    return this.ordersService.getOrdersByCustomer(req.user.id);
+  getMyOrders(
+    @Req() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    return this.ordersService.getOrdersByCustomer(
+      req.user.id,
+      Number(page),
+      Number(limit),
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('dealer')
-  async getDealerOrders(@Req() req) {
-    console.log("Запрос: ", req.user);
+  async getDealerOrders(
+    @Req() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
     if (!req.user.organizationId) {
       throw new ForbiddenException('Нет организации');
     }
 
-    return this.ordersService.getOrdersByDealer(req.user.organizationId);
+    return this.ordersService.getOrdersByDealer(
+      req.user.organizationId,
+      Number(page),
+      Number(limit),
+    );
   }
-
   @UseGuards(JwtAuthGuard)
   @Get(':externalId')
   getOrderByExternalId(

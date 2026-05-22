@@ -76,6 +76,9 @@ export class Contract {
   @Column({ name: 'include_appendix', type: 'boolean', nullable: true })
   include_appendix?: boolean;
 
+  @Column({ name: 'template_html', type: 'text', nullable: true })
+  template_html?: string;
+
   @Column({ name: 'contract_date', type: 'date', nullable: true })
   contractDate?: Date;
 
