@@ -1,9 +1,10 @@
-import { Controller, Get, Post, UseGuards, Req, Query, Body, Param, Res, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Req, Query, Body, Param, Res, UseInterceptors, HttpStatus } from '@nestjs/common';
 import { FileInterceptor, } from '@nestjs/platform-express';
 
 import { ApiPlService } from './apiPl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Response, Request } from 'express';
+import * as querystring from 'querystring';
 
 @Controller('planplace')
 export class ApiPlController {
@@ -65,18 +66,71 @@ export class ApiPlController {
       data: orderDto
     };
   } */
+  /*  @Post('order')
+ async getOrder(@Req() req: Request, @Res() res: Response) {
+   let totalLength = 0;
+
+   // Включаем слушатель ошибок на потоке
+   req.on('error', (err) => {
+     console.error('Ошибка потока:', err);
+   });
+
+   // Пошагово читаем данные
+   for await (const chunk of req) {
+     totalLength += chunk.length;
+     console.log(chunk)
+     console.log(`Получен кусок: ${chunk.length} байт`);
+   }
+
+   console.log(`Обработка завершена. Всего байт: ${totalLength}`);
+   return res.status(HttpStatus.OK).json({ status: 'success', totalLength });
+ } */
+
   @Post('order')
   async getOrder(@Req() req: Request, @Res() res: Response) {
-    // Данные будут приходить по кусочкам (chunks)
-    req.on('data', (chunk) => {
-      // Здесь можно обрабатывать данные по частям, 
-      // не загружая все 45МБ в память сразу
-      console.log('Получен кусок данных:', chunk.length);
+    const chunks: Buffer[] = [];
+
+    // Настройки фильтрации ключей
+    const whitelist: string[] = []; // Если не пустой, то берем только эти ключи
+    const blacklist: string[] = ['save_data', 'modules_list'];
+
+    req.on('error', (err) => {
+      console.error('Ошибка потока:', err);
     });
 
-    req.on('end', () => {
-      res.status(200).send({ status: 'success' });
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+
+    const rawBody = Buffer.concat(chunks).toString('utf-8');
+    const parsedData = querystring.parse(rawBody);
+
+    // Фильтрация объекта
+    const filteredData: Record<string, any> = {};
+    const keys = Object.keys(parsedData);
+
+    if (whitelist.length > 0) {
+      // Логика Белого списка
+      for (const key of keys) {
+        if (whitelist.includes(key)) {
+          filteredData[key] = parsedData[key];
+        }
+      }
+    } else {
+      // Логика Черного списка
+      for (const key of keys) {
+        if (!blacklist.includes(key)) {
+          filteredData[key] = parsedData[key];
+        }
+      }
+    }
+
+    console.log('Отфильтрованные данные:');
+    console.log(filteredData);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      data: filteredData
     });
   }
-
 }
