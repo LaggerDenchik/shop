@@ -43,10 +43,10 @@ export class OrdersService {
       )
       .leftJoin('order.customer', 'customer')
       .addSelect([
-        'customer.id', 
+        'customer.id',
         'customer.fullName',
         'customer.email'
-      ]) 
+      ])
       .where(
         `
       order.dealer_org_id = :dealerOrgId
@@ -240,9 +240,9 @@ export class OrdersService {
 
   private normalizePrice(price?: string): number {
     if (!price) return 0;
+
     return Number(price
       .replace(/\s/g, '')
-      .replace('€', '')
       .replace(',', '.')
     );
   }
