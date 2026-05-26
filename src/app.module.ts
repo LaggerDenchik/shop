@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { CabinetsModule } from './cabinets/cabinets.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +14,7 @@ import { YandexCloudModule } from 'yandex_cloud/yandex_cloud.module';
 import { RequestsModule } from 'requests/requests.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { OrderFilesModule } from './order_files/order-files.module';
+import { json, urlencoded } from 'express';
 
 @Module({
   imports: [
@@ -60,7 +61,18 @@ import { OrderFilesModule } from './order_files/order-files.module';
     OrderFilesModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(
+        json({ limit: '10mb' }), // Парсер для обычных @Body() с JSON
+        urlencoded({ extended: true, limit: '10mb' }) // Парсер для остальных форм
+      )
+      // роуты и метод, чтобы поток для него оставался чистым
+      .exclude({ path: 'planplace/order', method: RequestMethod.POST }) 
+      .forRoutes('*'); 
+  }
+}
 
 // Функция для определения env файла
 function getEnvFilePath(): string {

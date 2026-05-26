@@ -7,7 +7,7 @@ import { HttpExceptionFilter } from './filters/http-exception.filter';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
 
   app.use(cookieParser());  
 
@@ -19,6 +19,7 @@ async function bootstrap() {
     origin: [
       'https://test.mgshop.by',
       'https://mgshop.by',
+      'http://localhost:4200',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
